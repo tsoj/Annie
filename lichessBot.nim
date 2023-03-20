@@ -37,7 +37,7 @@ historyOfGameResultsResetAllLockFiles historyOfGameResultsFileName
 
 type LichessBotState = object
     gameProcesses: Table[string, Process]
-    numReservedProcesses: int# = 0
+    numReservedProcesses: int = 0
 
 proc tryReserveGameProcess(lbs: var LichessBotState): bool =
     if lbs.gameProcesses.len + lbs.numReservedProcesses < maxConcurrentGames:

@@ -10,9 +10,9 @@ import std/[
 ]
 
 type HistoryOfGameResults = object
-    sumOpponentRating: float# = 1500.0
-    sumScore: float# = 0.5
-    numGames: int# = 0
+    sumOpponentRating: float = 1500.0
+    sumScore: float = 0.5
+    numGames: int = 0
 
 let
     baseLockFileName = "lockFile_historyOfGameResults"
