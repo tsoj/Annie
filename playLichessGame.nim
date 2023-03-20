@@ -61,8 +61,6 @@ var sentGreetingMessage = false
 
 proc main() =
 
-    # we started this function already previously
-
     var bgs = BotGameState(
         requestsSession: getRequestsSession(),
         gameId: gameId,
