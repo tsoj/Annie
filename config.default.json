@@ -1,0 +1,7 @@
+{
+    "lichessToken": "your token here",
+    "historyOfGameResultsFileName": "historyOfGameResults.txt",
+    "anarchyCommentsFileName": "anarchyComments.json",
+    "hashSizeMegaByte": 140,
+    "concurrentGames": 3
+}
