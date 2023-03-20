@@ -17,6 +17,8 @@ Copy `config.default.json` to `config.json` and replace the place-holder for `"l
 
 Now run `./runLichessBot.sh` and you can start playing the bot on lichess!
 
+(Some of the code also has an anarchy feeling to it, but that's definitely intended ...)
+
 ### License
 
 Copyright © Jost Triller
