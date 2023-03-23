@@ -305,5 +305,5 @@ func messageStartingDifficultyLevel*(dl: DifficultyLevel): string =
     else:
         result = &"Aww, I think level {translateDifficultyLevel[dl]} is a good fit for you :).\n"
 
-    result &= &"If you're already scared, say \"{commandHigherDiffculty}\".\n" &
-    &"If you feel especially sharp and smart today, say \"{commandLowerDiffculty}\"."
+    result &= &"If you're already scared, say \"{commandHigherDiffculty}\",\n" &
+    &"if you feel especially sharp and smart today, say \"{commandLowerDiffculty}\"."
