@@ -490,7 +490,7 @@ func search*(
             var candidates = position.cloudVariations
             state.randState.shuffle candidates
             for i, move in candidates:
-                if move.enPassantTarget == noSquare and i < candidates.len - 1 and state.randState.rand(1.0) < 0.3:
+                if move.enPassantTarget == noSquare and i < candidates.len - 1 and state.randState.rand(1.0) < 0.5:
                     # only do non-double push in few cases
                     continue
                 checkMoveWithBonus(move, anarchyParams(state.dl).minValueCloudVariation)
