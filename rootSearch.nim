@@ -55,7 +55,7 @@ iterator iterativeDeepeningSearch*(
     targetDepth: Ply = Ply.high,
     numThreads = 1,
     maxNodes = uint64.high,
-    difficultyLevel: DifficultyLevel = 5.DifficultyLevel,
+    difficultyLevel: DifficultyLevel,
     evaluation: proc(position: Position): Value {.noSideEffect.} = evaluate,
     approxTotalTime: Duration
 ): tuple[value: Value, pv: seq[Move], nodes: uint64, canStop: bool] {.noSideEffect.} =

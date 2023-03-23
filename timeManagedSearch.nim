@@ -6,9 +6,13 @@ import
     rootSearch,
     evaluation,
     utils,
+    anarchyParameters
+
+import std/[
     atomics,
     threadpool,
     times
+]
 
 type MoveTime = object
     maxTime, approxTime: Duration
@@ -45,6 +49,7 @@ iterator iterativeTimeManagedSearch*(
     moveTime = initDuration(milliseconds = int64.high),
     numThreads: int,
     maxNodes: uint64 = uint64.high,
+    difficultyLevel: DifficultyLevel,
     evaluation: proc(position: Position): Value {.noSideEffect.} = evaluate
 ): tuple[value: Value, pv: seq[Move], nodes: uint64, passedTime: Duration] =
 
@@ -73,7 +78,8 @@ iterator iterativeTimeManagedSearch*(
         numThreads = numThreads,
         maxNodes = maxNodes,
         evaluation = evaluation,
-        approxTotalTime = calculatedMoveTime.approxTime
+        approxTotalTime = calculatedMoveTime.approxTime,
+        difficultyLevel = difficultyLevel
     ):
         iteration += 1
         let totalPassedTime = now() - start
@@ -116,6 +122,7 @@ proc timeManagedSearch*(
     moveTime = initDuration(milliseconds = int64.high),
     numThreads = 1,
     maxNodes: uint64 = uint64.high,
+    difficultyLevel: DifficultyLevel,
     evaluation: proc(position: Position): Value {.noSideEffect.} = evaluate
 ): tuple[value: Value, pv: seq[Move]] =
     for (value, pv, nodes, passedTime) in iterativeTimeManagedSearch(
@@ -130,6 +137,7 @@ proc timeManagedSearch*(
         moveTime = moveTime,
         numThreads = numThreads,
         maxNodes = maxNodes,
+        difficultyLevel = difficultyLevel,
         evaluation
     ):
         result = (value: value, pv: pv)

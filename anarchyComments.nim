@@ -32,6 +32,8 @@ type
         evalHistory*: seq[Value]
         gameId*: string
         token*: string
+        sentMovesForPositions*: seq[string]
+        difficultyLevel*: DifficultyLevel
 
 const lichessChatCharLimit = 140
 
@@ -77,24 +79,32 @@ proc registerSentComment*(bgs: var BotGameState, commentType: CommentType, gameS
     bgs.commentHistory.add text
 
 proc sendMessage*(bgs: var BotGameState, text: string, toSpectator = false, toPlayer = true) =
-    for line in text.split('\n'):
+    var smallText = ""
+    let lines = text.split('\n')
+    for lineNumber, line in lines:
 
-        var
-            words = line.splitWhitespace
-            smallText = ""
+        let words = line.splitWhitespace
 
         for i, word in words:
             if smallText.len > 0:
                 smallText &= " "
             smallText &= word
-            doAssert smallText.len <= lichessChatCharLimit
-            if i == words.len - 1 or smallText.len + 1 + words[i + 1].len > lichessChatCharLimit:
+
+            let
+                lastWordInLine = i == words.len - 1
+                lastWord = lastWordInLine and lineNumber == lines.len - 1
+                nextPotentialSmallText = smallText & (if lastWordInLine: "" else: " " & words[i + 1] & (if lastWord: "" else: " …"))
+
+            if i == words.len - 1 or nextPotentialSmallText.len > lichessChatCharLimit:
+                if not lastWord:
+                    smallText &= " …"
+                doAssert smallText.len <= lichessChatCharLimit
                 sleep 50
                 if toPlayer:
                     discard bgs.requestsSession.jsonResponse(httpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "player", "text": smallText}.toTable)
                 if toSpectator:
                     discard bgs.requestsSession.jsonResponse(httpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "spectator", "text": smallText}.toTable)
-                smallText = ""
+                smallText = "…"
 
 
 
@@ -117,8 +127,6 @@ proc trySendSomeComments(
     var madeComment = false
     let bgsAddr = addr bgs
     proc handleCommentType(commentType: CommentType) =
-
-        logInfo "commentType: ", commentType
 
         let
             moveCooldown =
@@ -165,7 +173,8 @@ proc beforeBotMove*(bgs: var BotGameState, gameState: LichessGameState) =
         lastMove: gameState.positionMoveHistory[^1].move,
         pv: none(seq[Move]),
         evalDiff: none(Value),
-        lastEval: none(Value)
+        lastEval: none(Value),
+        difficultyLevel: bgs.difficultyLevel
     )
 
     if bgs.evalHistory.len > 0:
@@ -212,7 +221,8 @@ proc afterBotMove*(bgs: var BotGameState, gameState: LichessGameState, pv: seq[M
         gameState: gameState,
         lastMove: pv[0],
         pv: some(pv),
-        evalDiff: none(Value)
+        evalDiff: none(Value),
+        difficultyLevel: bgs.difficultyLevel
     )
 
     if bgs.evalHistory.len >= 2 and bgs.evalHistory[^1].abs < valueCheckmate:
@@ -267,11 +277,22 @@ const
     ]
     commandHigherDiffculty* = "Please don't crush me!"
     commandLowerDiffculty* = "You are underestimating me."
-    messageAlreadyAtHighestDifficulty* = "Better play against a rock if you're still intimidated"
+    commandSetDiffculty* = "Level"
+    messageAlreadyAtHighestDifficulty* = "Better play against a rock if you're still intimidated."
     messageAlreadyAtLowestDifficulty* = "Sorry, I don't get more brilliant than this."
     messageCanOnlyChangeDifficultyAtBeginOfGame* = "You can only change the level at the begin of the game."
 func messageNewDifficultyLevel*(dl: DifficultyLevel): string =
-    fmt"Great, so you'll be playing against level {translateDifficultyLevel[dl]}."
+    &"Great, so you'll be playing against level {translateDifficultyLevel[dl]}. You can also set the level directly by saying \"{commandSetDiffculty} <level>\"."
+func messageDirectlySetDifficultyLevel*(dl: DifficultyLevel): string =
+    if dl == DifficultyLevel.high:
+        "lol, okay"
+    else:
+        "k"
+func toDifficultyLevel*(s: string): Option[DifficultyLevel] =
+    for difficulty, levelString in translateDifficultyLevel:
+        if levelString.toLowerAscii == s.toLowerAscii:
+            return some difficulty
+    none DifficultyLevel
 
 func messageStartingDifficultyLevel*(dl: DifficultyLevel): string =
 

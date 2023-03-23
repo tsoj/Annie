@@ -82,7 +82,7 @@ proc main() =
     doAssert getCurrentDir().lastPathPart == "game_directory_" & gameId, "This executable must be run in a directory named \"game_directory_{gameId}\""
     doAssert historyOfGameResultsFileName.len > 0 and historyOfGameResultsFileName[0] == '/', "historyOfGameResultsFileName must be an absolute path"
 
-    var difficultyLevel = 1.DifficultyLevel
+    bgs.difficultyLevel = 1.DifficultyLevel
     let lichessGame = block:
         var
             lichessGame = none LichessGame
@@ -103,19 +103,19 @@ proc main() =
             logError msg
             raise newException(IOError, msg)
         
-        difficultyLevel = difficultyLevelOpt.get
+        bgs.difficultyLevel = difficultyLevelOpt.get
         let lg = lichessGame.get
         lg # this is a hack, because weirdly when I return lichessGame.get it doesn't work out
         # lichessGame.get
     
     doAssert lichessGame.gameId == gameId
     doAssert bgs.gameId == gameId
-    logInfo "Difficulty: ", difficultyLevel
+    logInfo "Difficulty: ", bgs.difficultyLevel
 
     if not sentGreetingMessage:
         sleep 3000
         doAssert bgs.sendComment greeting
-        bgs.sendMessage messageStartingDifficultyLevel(difficultyLevel)
+        bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
         sentGreetingMessage = true
 
     var
@@ -145,27 +145,37 @@ proc main() =
                             weDeclinedDrawAlready = true
 
                 if gameStateNode{"room"}.getStr == "player":
-                    if gameStateNode{"text"}.getStr == commandHigherDiffculty:
+                    let text = gameStateNode{"text"}.getStr.toLowerAscii
+                    if text == commandHigherDiffculty.toLowerAscii:
                         if not canChangeDifficulty:
                             bgs.sendMessage messageCanOnlyChangeDifficultyAtBeginOfGame
                         else:
-                            if difficultyLevel == DifficultyLevel.high:
+                            if bgs.difficultyLevel == DifficultyLevel.high:
                                 bgs.sendMessage messageAlreadyAtHighestDifficulty
                             else:
-                                inc difficultyLevel
-                                bgs.sendMessage messageNewDifficultyLevel(difficultyLevel)
-                        logInfo "Difficulty: ", difficultyLevel
+                                inc bgs.difficultyLevel
+                                bgs.sendMessage messageNewDifficultyLevel(bgs.difficultyLevel)
+                        logInfo "Difficulty: ", bgs.difficultyLevel
                     
-                    if gameStateNode{"text"}.getStr == commandLowerDiffculty:
+                    elif text == commandLowerDiffculty.toLowerAscii:
                         if not canChangeDifficulty:
                             bgs.sendMessage messageCanOnlyChangeDifficultyAtBeginOfGame
                         else:
-                            if difficultyLevel == DifficultyLevel.low:
+                            if bgs.difficultyLevel == DifficultyLevel.low:
                                 bgs.sendMessage messageAlreadyAtLowestDifficulty
                             else:
-                                inc difficultyLevel, -1
-                                bgs.sendMessage messageNewDifficultyLevel(difficultyLevel)
-                        logInfo "Difficulty: ", difficultyLevel
+                                inc bgs.difficultyLevel, -1
+                                bgs.sendMessage messageNewDifficultyLevel(bgs.difficultyLevel)
+                        logInfo "Difficulty: ", bgs.difficultyLevel
+                    elif text.len > commandSetDiffculty.len and text[0..<commandSetDiffculty.len] == commandSetDiffculty.toLowerAscii:
+                        let words = text[commandSetDiffculty.len..^1].splitWhitespace
+                        if words.len >= 1:
+                            let dl = words[0].toDifficultyLevel
+                            if dl.isSome:
+                                bgs.difficultyLevel = dl.get
+                                bgs.sendMessage messageDirectlySetDifficultyLevel(bgs.difficultyLevel)
+                            else:
+                                bgs.sendMessage "Don't know what you mean with " & words[1]
 
                 continue
 
@@ -178,6 +188,10 @@ proc main() =
             gameStateNode
 
         let gameState = lichessGame.getCurrentState(gameStateNode)
+
+        if gameState.currentPosition.fen in bgs.sentMovesForPositions:
+            logWarn "Skipping. Already sent move for position: ", gameState.currentPosition.fen
+            continue
 
         logInfo "Current position: ", gameState.currentPosition.fen
         
@@ -231,7 +245,7 @@ proc main() =
 
 
                 historyOfGameResultsFileName.updateHistoryOfGameResults(
-                    difficultyLevel = difficultyLevel,
+                    difficultyLevel = bgs.difficultyLevel,
                     opponentElo = lichessGame.opponentElo,
                     score = outcome
                 )
@@ -262,14 +276,17 @@ proc main() =
 
             let (value, pv) = if suggestedMove != noMove:
                 doAssert suggestedMove in gameState.currentPosition.legalMoves
+                logInfo "Using suggested move instead of search: ", suggestedMove
                 (0.Value, @[suggestedMove])
             else:
+                logInfo "Using difficulty level ", bgs.difficultyLevel
                 timeManagedSearch(
                     position = gameState.currentPosition,
                     hashTable = hashTable,
                     positionHistory = gameState.getPositionHistory,
                     increment = [white: gameState.winc, black: gameState.binc],
-                    timeLeft = [white: wtime, black: btime]
+                    timeLeft = [white: wtime, black: btime],
+                    difficultyLevel = bgs.difficultyLevel
                 )
 
             logInfo "Game ", gameId, ": Finished search"
@@ -296,6 +313,7 @@ proc main() =
             except CatchableError:
                 logError &"Failed to send move {move} for game {gameId} to lichess\nQuery: {query}\nException: ", getCurrentExceptionMsg()
                 raise
+            bgs.sentMovesForPositions.add gameState.currentPosition.fen
             logInfo "Played move ", move
             bgs.afterBotMove(gameState, if pv.len > 0 and pv[0] == move: pv else: @[move], value)
 

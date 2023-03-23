@@ -14,7 +14,9 @@ import
     evaluation,
     bitboard,
     search,
-    lichessGame
+    lichessGame,
+    anarchyParameters,
+    log
 
 type
     CommentType* = enum
@@ -59,8 +61,20 @@ type
         pv*: Option[seq[Move]]
         evalDiff*: Option[Value]
         lastEval*: Option[Value]
+        difficultyLevel*: DifficultyLevel
 
-const blunderMargin* = 400.cp # we need to make it that large because the eval values with anarchy parameters can be a bit wild ...
+const blunderMargin: array[DifficultyLevel, Value] = [
+    1: 800.cp, # we need to make it that large because the eval values with anarchy parameters can be a bit wild ...
+    2: 700.cp,
+    3: 600.cp,
+    4: 500.cp,
+    5: 450.cp,
+    6: 400.cp,
+    7: 350.cp,
+    8: 300.cp,
+    9: 250.cp,
+    10: 200.cp
+]
 
 const commentTypeCooldown*: array[CommentType, tuple[halfMoves: int, timeInterval: int]] = [ # in seconds
     enemyMovedPieceBackAtLeastTwoRanks: (halfMoves: 6, timeInterval: 60),
@@ -114,9 +128,13 @@ proc checkIfCommentApplicable*(commentType: TypedParam[enemyMovedPieceBackAtLeas
     if cci.lastMove.captured != noPiece:
         return false
 
-    if cci.previousPosition.us == white and (cci.lastMove.target.int div 8) + 1 < (cci.lastMove.source.int div 8):
+    if cci.previousPosition.us == white and
+    cci.lastMove.source < a7 and
+    (cci.lastMove.target.int div 8) + 1 < (cci.lastMove.source.int div 8):
         return true
-    if cci.previousPosition.us == black and (cci.lastMove.target.int div 8) > (cci.lastMove.source.int div 8) + 1:
+    if cci.previousPosition.us == black and
+    cci.lastMove.source > h2 and
+    (cci.lastMove.target.int div 8) > (cci.lastMove.source.int div 8) + 1:
         return true
 
     false
@@ -235,14 +253,15 @@ proc checkIfCommentApplicable*(commentType: TypedParam[ourBestMoveIsKnightFork],
 
 proc checkIfCommentApplicable*(commentType: TypedParam[enemyLostGoodPiece], cci: CommentConditionInfo): bool = #position: Position, move: Move, enemyMoveWasBlunder: bool, botColor: Color): bool =
     doAssert cci.previousPosition.us == cci.botColor, "Only consider this when we made our move (position is before the move)"
+    doAssert cci.pv.isSome
     
-    if cci.evalDiff.isNone or cci.evalDiff.get < blunderMargin:
+    if cci.evalDiff.isNone or cci.evalDiff.get < blunderMargin[cci.difficultyLevel]:
         return false
 
     if cci.lastMove.captured == noPiece:
         return false
-
-    return cci.previousPosition.materialQuiesce - cci.previousPosition.material >= cci.lastMove.captured.value
+    
+    true
 
 proc checkIfCommentApplicable*(commentType: TypedParam[enemyDoesFirstKingCloudMove], cci: CommentConditionInfo): bool =
     doAssert cci.previousPosition.enemy == cci.botColor, "Only consider this when the enemy already did their move (position is before the move)"
@@ -317,7 +336,7 @@ proc checkIfCommentApplicable*(commentType: TypedParam[weCheckedEnemy], cci: Com
 
 proc checkIfCommentApplicable*(commentType: TypedParam[weBlundered], cci: CommentConditionInfo): bool =
     doAssert cci.previousPosition.us == cci.botColor, "Only consider this when we made our move (position is before the move)"
-    return cci.evalDiff.isSome and cci.evalDiff.get <= -blunderMargin and cci.lastEval.isSome and cci.lastEval.get <= 100.cp
+    return cci.evalDiff.isSome and cci.evalDiff.get <= -blunderMargin[cci.difficultyLevel] and cci.lastEval.isSome and cci.lastEval.get in (-1000.cp + cci.evalDiff.get)..100.cp
 
 proc checkIfCommentApplicable*(commentType: TypedParam[rageQuit], cci: CommentConditionInfo): bool =
     doAssert false, "Not implemented"
