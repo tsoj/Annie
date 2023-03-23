@@ -15,8 +15,7 @@ import
     bitboard,
     search,
     lichessGame,
-    anarchyParameters,
-    log
+    anarchyParameters
 
 type
     CommentType* = enum
