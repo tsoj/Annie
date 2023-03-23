@@ -51,8 +51,15 @@ proc loadAnarchyComments*(fileName: string) =
             logWarn "Didn't find an entry for comment type ", commentType
             tmp[commentType] = @[$commentType & " text 1"]
         for comment in tmp[commentType]:
-            for line in comment.split('\n'):
-                if line.len > lichessChatCharLimit:
+            let lines = comment.split('\n')
+            for i, line in lines:
+                let extraBuffer = if line == comment:
+                    0
+                elif i == 0 or i == lines.len - 1:
+                    2 # 2 because we need to add "… " or " …" at the begining OR end
+                else:
+                    4 # 4 because we need to add "… " and " …" at the begining AND end
+                if line.len > lichessChatCharLimit - extraBuffer: 
                     logWarn &"Line too long: \"{line}\" (comment type: {commentType})"
 
     commentTable = some tmp
@@ -305,5 +312,5 @@ func messageStartingDifficultyLevel*(dl: DifficultyLevel): string =
     else:
         result = &"Aww, I think level {translateDifficultyLevel[dl]} is a good fit for you :).\n"
 
-    result &= &"If you're already scared, say \"{commandHigherDiffculty}\",\n" &
-    &"if you feel especially sharp and smart today, say \"{commandLowerDiffculty}\"."
+    result &= &"If you're already scared, say \"{commandHigherDiffculty}\".\n" &
+    &"If you feel especially sharp and smart today, say \"{commandLowerDiffculty}\"."
