@@ -90,6 +90,6 @@ proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token
 
     result = body.parseJson
 
-proc jsonResponse*(httpMethod: HttpMethod, query: string, token: string): JsonNode =
+proc jsonResponse*(httpMethod: HttpMethod, query: string, token: string, payload = initTable[string, string]()): JsonNode =
     let session = getRequestsSession()
-    session.jsonResponse(httpMethod, query, token)
+    session.jsonResponse(httpMethod, query, token, payload)

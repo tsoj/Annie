@@ -128,7 +128,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         opponentId = challengeNode{"challenger"}{"id"}.getStr
 
     template decline(reason: string) =
-        discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/decline?reason=" & reason, token)
+        discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/decline", token, {"reason": reason}.toTable)
         logInfo fmt"Declined challenge {challengeId} by {opponentId} because of ", reason
 
     # decline challenge if needed
