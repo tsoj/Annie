@@ -112,12 +112,6 @@ proc main() =
     doAssert bgs.gameId == gameId
     logInfo "Difficulty: ", bgs.difficultyLevel
 
-    if not sentGreetingMessage:
-        sleep 3000
-        doAssert bgs.sendComment greeting
-        bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
-        sentGreetingMessage = true
-
     var
         hashTable = newHashTable()
         weOfferedDrawAlready = false
@@ -188,6 +182,15 @@ proc main() =
             gameStateNode
 
         let gameState = lichessGame.getCurrentState(gameStateNode)
+
+
+
+        if gameState.positionMoveHistory.len == 0 and not sentGreetingMessage:
+            sleep 500
+            doAssert bgs.sendComment greeting
+            bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
+            sentGreetingMessage = true
+
 
         if gameState.currentPosition.fen in bgs.sentMovesForPositions:
             logWarn "Skipping. Already sent move for position: ", gameState.currentPosition.fen

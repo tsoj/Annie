@@ -335,7 +335,14 @@ proc checkIfCommentApplicable*(commentType: TypedParam[weCheckedEnemy], cci: Com
 
 proc checkIfCommentApplicable*(commentType: TypedParam[weBlundered], cci: CommentConditionInfo): bool =
     doAssert cci.previousPosition.us == cci.botColor, "Only consider this when we made our move (position is before the move)"
-    return cci.evalDiff.isSome and cci.evalDiff.get <= -blunderMargin[cci.difficultyLevel] and cci.lastEval.isSome and cci.lastEval.get in (-1000.cp + cci.evalDiff.get)..100.cp
+
+    if cci.lastEval.isNone or cci.lastEval.get notin (-1000.cp + cci.evalDiff.get)..100.cp:
+        return false
+
+    if cci.gameState.positionMoveHistory.len <= 8:
+        return false
+
+    return cci.evalDiff.isSome and cci.evalDiff.get <= -blunderMargin[cci.difficultyLevel] 
 
 proc checkIfCommentApplicable*(commentType: TypedParam[rageQuit], cci: CommentConditionInfo): bool =
     doAssert false, "Not implemented"

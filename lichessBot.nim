@@ -72,6 +72,7 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     let
         gameNode = jsonNode{"game"}
         gameId = gameNode{"gameId"}.getStr
+        opponentName = gameNode{"opponent"}{"username"}.getStr
 
     let gameDir = "./game_directories/game_directory_" & gameId
 
@@ -101,7 +102,7 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
         options = {poParentStreams}
     )
 
-    logInfo "Launched process for game ", gameId
+    echoLog fmt"Launched process for game https://lichess.org/{gameId} against {opponentName}"
 
     if lbs.numReservedProcesses >= 1:
         lbs.numReservedProcesses -= 1
