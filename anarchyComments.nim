@@ -285,7 +285,7 @@ const
         "A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3", "D"
     ]
     commandHigherDiffculty* = "Please don't crush me!"
-    commandLowerDiffculty* = "You are underestimating me."
+    commandLowerDiffculty* = "You are underestimating me"
     commandSetDiffculty* = "Level"
     messageAlreadyAtHighestDifficulty* = "Better play against a rock if you're still intimidated."
     messageAlreadyAtLowestDifficulty* = "Sorry, I don't get more brilliant than this."
