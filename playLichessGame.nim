@@ -70,14 +70,15 @@ proc main() =
     if sentGreetingMessage:
         bgs.sendMessage "Sorry, I had some stupid technical difficulties."
     
-    let botUserId = block:
+    let (botUserId, botUserName) = block:
         let b = bgs.requestsSession.jsonResponse(httpGet, "https://lichess.org/api/account", token)
         if b{"id"}.getStr == "":
             logError b.pretty
             quit QuitFailure
-        b{"id"}.getStr
+        (b{"id"}.getStr, b{"username"}.getStr)
 
     logInfo "Bot user ID: ", botUserId
+    logInfo "Bot username: ", botUserName
 
     doAssert getCurrentDir().lastPathPart == "game_directory_" & gameId, "This executable must be run in a directory named \"game_directory_{gameId}\""
     doAssert historyOfGameResultsFileName.len > 0 and historyOfGameResultsFileName[0] == '/', "historyOfGameResultsFileName must be an absolute path"
@@ -138,9 +139,23 @@ proc main() =
                             discard bgs.sendComment enemyOffersDraw
                             weDeclinedDrawAlready = true
 
-                if gameStateNode{"room"}.getStr == "player":
-                    let text = gameStateNode{"text"}.getStr.toLowerAscii
-                    if text == commandHigherDiffculty.toLowerAscii:
+                if gameStateNode{"room"}.getStr == "player" and gameStateNode{"username"}.getStr != botUserName:
+
+                    func normalize(s: string): string =
+                        s.toLowerAscii.multiReplace(
+                            (",", ""),
+                            (".", ""),
+                            ("!", ""),
+                            ("?", ""),
+                            ("-", ""),
+                            ("_", ""),
+                            ("\"", ""),
+                            ("'", "")
+                        )
+
+                    let text = gameStateNode{"text"}.getStr.normalize
+                    
+                    if commandHigherDiffculty.normalize in text:
                         if not canChangeDifficulty:
                             bgs.sendMessage messageCanOnlyChangeDifficultyAtBeginOfGame
                         else:
@@ -151,7 +166,7 @@ proc main() =
                                 bgs.sendMessage messageNewDifficultyLevel(bgs.difficultyLevel)
                         logInfo "Difficulty: ", bgs.difficultyLevel
                     
-                    elif text == commandLowerDiffculty.toLowerAscii:
+                    elif commandLowerDiffculty.normalize in text:
                         if not canChangeDifficulty:
                             bgs.sendMessage messageCanOnlyChangeDifficultyAtBeginOfGame
                         else:
@@ -161,7 +176,7 @@ proc main() =
                                 inc bgs.difficultyLevel, -1
                                 bgs.sendMessage messageNewDifficultyLevel(bgs.difficultyLevel)
                         logInfo "Difficulty: ", bgs.difficultyLevel
-                    elif text.len > commandSetDiffculty.len and text[0..<commandSetDiffculty.len] == commandSetDiffculty.toLowerAscii:
+                    elif text.len > commandSetDiffculty.len and text[0..<commandSetDiffculty.len] == commandSetDiffculty.normalize:
                         let words = text[commandSetDiffculty.len..^1].splitWhitespace
                         if words.len >= 1:
                             let dl = words[0].toDifficultyLevel
@@ -169,7 +184,11 @@ proc main() =
                                 bgs.difficultyLevel = dl.get
                                 bgs.sendMessage messageDirectlySetDifficultyLevel(bgs.difficultyLevel)
                             else:
-                                bgs.sendMessage "Don't know what you mean with " & words[1]
+                                bgs.sendMessage "Don't know what you mean with " & words[0]
+                    else:
+                        if text.toDifficultyLevel.isSome:
+                            bgs.difficultyLevel = text.toDifficultyLevel.get
+                            bgs.sendMessage messageDirectlySetDifficultyLevel(bgs.difficultyLevel)
 
                 continue
 
