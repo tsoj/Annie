@@ -185,11 +185,15 @@ proc main() =
 
 
 
-        if gameState.positionMoveHistory.len == 0 and not sentGreetingMessage:
-            sleep 500
-            doAssert bgs.sendComment greeting
-            bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
+        if not sentGreetingMessage:
+            if gameState.positionMoveHistory.len == 0:
+                sleep 500
+                doAssert bgs.sendComment greeting
+                bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
+            else:
+                bgs.sendMessage "Sorry, I crashed."
             sentGreetingMessage = true
+
 
 
         if gameState.currentPosition.fen in bgs.sentMovesForPositions:
