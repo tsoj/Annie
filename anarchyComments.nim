@@ -239,6 +239,8 @@ proc afterBotMove*(bgs: var BotGameState, gameState: LichessGameState, pv: seq[M
         cci.lastEval = some bgs.evalHistory[^1]
 
     logInfo "evalHistory: ", bgs.evalHistory
+    if bgs.evalHistory.len > 0:
+        logInfo "last eval: ", bgs.evalHistory[^1]
     logInfo "cci.evalDiff: ", cci.evalDiff
 
     logInfo "afterBotMove"
