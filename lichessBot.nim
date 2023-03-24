@@ -140,7 +140,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         decline(reason = "timeControl")
         return
 
-    if challengeNode{"variant"}{"key"}.getStr notin ["standard", "chess960", "fromPosition"]:
+    if challengeNode{"variant"}{"key"}.getStr notin ["standard", "chess960"]:#, "fromPosition"]:
         decline(reason = "variant")
         return
 
