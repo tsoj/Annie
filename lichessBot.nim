@@ -153,7 +153,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         decline(reason = "tooFast")
         return
 
-    if challengeNode{"speed"}.getStr == "correspondence":
+    if challengeNode{"speed"}.getStr in ["correspondence", "classical"]:
         decline(reason = "tooSlow")
         return
 

@@ -57,9 +57,9 @@ proc loadAnarchyComments*(fileName: string) =
                 let extraBuffer = if line == comment:
                     0
                 elif i == 0 or i == lines.len - 1:
-                    2 # 2 because we need to add "… " or " …" at the begining OR end
+                    "… ".len # because we need to add "… " or " …" at the begining OR end
                 else:
-                    4 # 4 because we need to add "… " and " …" at the begining AND end
+                    "… ".len + " …".len # because we need to add "… " and " …" at the begining AND end
                 if line.len > lichessChatCharLimit - extraBuffer: 
                     logWarn &"Line too long: \"{line}\" (comment type: {commentType})"
 
