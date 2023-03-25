@@ -171,7 +171,7 @@ proc handleChallengeCanceled(lbs: var LichessBotState, jsonNode: JsonNode) =
 
 proc handleChallengeDeclined(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "challengeDeclined", jsonNode.pretty
-    logInfo "Challenge got cancelled: ", jsonNode{"challenge"}{"id"}.getStr
+    logInfo "Challenge from ", jsonNode{"challenge"}{"challenger"}{"name"}.getStr, " got cancelled: ", jsonNode{"challenge"}{"id"}.getStr
 
 
 proc listenToIncomingEvents(lbs: var LichessBotState) =
