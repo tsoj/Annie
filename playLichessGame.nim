@@ -59,6 +59,14 @@ func getCloudKingMove(position: Position): Move =
 
 var sentGreetingMessage = false
 
+const maxWaitTimeBeforeStarted = initDuration(seconds = 60)
+let startTime = now()
+
+proc abortGame(bgs: var BotGameState) =
+    bgs.sendMessage "Abort! Abort! Abort!"
+    let query = fmt"https://lichess.org/api/bot/game/{gameId}/abort"
+    discard bgs.requestsSession.jsonResponse(httpPost, query, token)
+
 proc main() =
 
     var bgs = BotGameState(
@@ -91,6 +99,11 @@ proc main() =
 
         for gameFullNode in streamEvents(fmt"https://lichess.org/api/bot/game/stream/{gameId}", token):
 
+            if gameFullNode.isNone:
+                continue
+
+            let gameFullNode = gameFullNode.get
+
             if gameFullNode{"type"}.getStr != "gameFull":
                 let msg = &"Didn't receive expected \"gameFull\" JSON type: {gameFullNode}"
                 logError msg
@@ -121,25 +134,36 @@ proc main() =
         canChangeDifficulty = true
     hashTable.setSize(sizeInBytes = hashSizeMegaByte * megaByteToByte)
 
-    for gameStateNode in streamEvents(fmt"https://lichess.org/api/bot/game/stream/{gameId}", token):    
+    for jsonNode in streamEvents(fmt"https://lichess.org/api/bot/game/stream/{gameId}", token):    
         if parentPID != getppid(): # parent process stopped
             logError "Parent process (", parentPID, ") doesn't exist anymore"
             quit QuitFailure
 
-        logInfo "Received event: ", gameStateNode.pretty
+        if jsonNode.isNone:
+
+            if bgs.lastLichessGameState.positionMoveHistory.len <= 1 and now() - startTime >= maxWaitTimeBeforeStarted:
+                bgs.abortGame()
+
+            continue
+
+        let jsonNode = jsonNode.get
+
+        logInfo "Received event: ", jsonNode.pretty
+
+        let nodeType = jsonNode{"type"}.getStr
         
-        let gameStateNode = if gameStateNode{"type"}.getStr != "gameState":
-            if gameStateNode{"type"}.getStr == "chatLine":
-                if gameStateNode{"room"}.getStr == "spectator" and
-                gameStateNode{"username"}.getStr == "lichess":
-                    if (gameStateNode{"text"}.getStr == "White offers draw" and lichessGame.botColor == black) or
-                    (gameStateNode{"text"}.getStr == "Black offers draw" and lichessGame.botColor == white):
+        let gameStateNode = if nodeType != "gameState":
+            if nodeType == "chatLine":
+                if jsonNode{"room"}.getStr == "spectator" and
+                jsonNode{"username"}.getStr == "lichess":
+                    if (jsonNode{"text"}.getStr == "White offers draw" and lichessGame.botColor == black) or
+                    (jsonNode{"text"}.getStr == "Black offers draw" and lichessGame.botColor == white):
                         if (not weDeclinedDrawAlready) or rand(1.0) < 0.2:
                             sleep 300
                             discard bgs.sendComment enemyOffersDraw
                             weDeclinedDrawAlready = true
 
-                if gameStateNode{"room"}.getStr == "player" and gameStateNode{"username"}.getStr != botUserName:
+                if jsonNode{"room"}.getStr == "player" and jsonNode{"username"}.getStr != botUserName:
 
                     func normalize(s: string): string =
                         s.toLowerAscii.multiReplace(
@@ -153,8 +177,8 @@ proc main() =
                             ("'", "")
                         )
 
-                    let text = gameStateNode{"text"}.getStr.normalize
-                    
+                    let text = jsonNode{"text"}.getStr.normalize
+
                     if commandHigherDiffculty.normalize in text:
                         if not canChangeDifficulty:
                             bgs.sendMessage messageCanOnlyChangeDifficultyAtBeginOfGame
@@ -192,16 +216,24 @@ proc main() =
 
                 continue
 
-            if gameStateNode{"type"}.getStr != "gameFull":                
-                let msg = &"Didn't receive expected \"gameState\" JSON type: {gameStateNode}"
-                logError msg
-                raise newException(IOError, msg)
-            gameStateNode{"state"}
+            if nodeType == "opponentGone":
+                # if jsonNode{"gone"}.getBool:
+                #     TODO leave game
+                # ignore for now
+                continue
+
+            if nodeType != "gameFull":                
+                let msg = &"Didn't receive expected \"gameState\" JSON type: {jsonNode}"
+                logError msg                
+                continue
+
+            jsonNode{"state"}
         else:
-            gameStateNode
+            jsonNode
 
         let gameState = lichessGame.getCurrentState(gameStateNode)
 
+        bgs.lastLichessGameState = gameState
 
 
         if not sentGreetingMessage:
@@ -222,6 +254,7 @@ proc main() =
         logInfo "Current position: ", gameState.currentPosition.fen
         
         let gameStateStatus = gameStateNode{"status"}.getStr
+
         if gameStateStatus notin ["started", "created"]:
             logInfo "Game finished (", gameStateStatus, ")"
             if gameStateStatus in ["mate", "resign", "stalemate", "timeout", "draw", "outoftime"]:

@@ -3,7 +3,8 @@ import std/[
     strutils,
     strformat,
     tables,
-    os
+    os,
+    options
 ]
 
 import nimpy
@@ -20,7 +21,7 @@ let
 proc getRequestsSession*(): PyObject =
     requests.Session()
 
-iterator streamEvents*(url: string, token: string): JsonNode =
+iterator streamEvents*(url: string, token: string): Option[JsonNode] =
     {.warning[BareExcept]:off.}
     try:
         let response = requests.get(
@@ -35,7 +36,10 @@ iterator streamEvents*(url: string, token: string): JsonNode =
             let line = py.next(lines).to(string)
             if line.strip.len > 0 and line.strip[0] == '{':
                 let json = line.parseJson
-                yield json
+                yield some json
+            else:
+                # TODO this is just a hack so that the loop gets a regular response, so that I don#t need to do something multithreaded
+                yield none JsonNode
     except CatchableError:
         raise
     except Exception:
@@ -68,6 +72,7 @@ proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token
                 body = response.content.to(string)
                 
                 if status == 429: # rate limited, should wait at least a minute
+                    logWarn "Rate limited."
                     sleep 70_000
                 else:
                     break                    

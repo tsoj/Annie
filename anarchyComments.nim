@@ -32,6 +32,7 @@ type
         evalHistory*: seq[Value]
         gameId*: string
         token*: string
+        lastLichessGameState*: LichessGameState
         sentMovesForPositions*: seq[string]
         difficultyLevel*: DifficultyLevel
 

@@ -6,7 +6,8 @@ import std/[
     tables,
     os,
     osproc,
-    posix
+    posix,
+    options
 ]
 
 import
@@ -175,6 +176,11 @@ proc handleChallengeDeclined(lbs: var LichessBotState, jsonNode: JsonNode) =
 
 proc listenToIncomingEvents(lbs: var LichessBotState) =
     for jsonNode in streamEvents("https://lichess.org/api/stream/event", token):
+
+        if jsonNode.isNone:
+            continue
+
+        let jsonNode = jsonNode.get
 
         lbs.garbageCollectGameProcesses
 
