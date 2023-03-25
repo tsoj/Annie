@@ -87,7 +87,13 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert not dirExists gameDir
     createDir gameDir
 
-    doAssert gameId notin lbs.gameProcesses, fmt"A single game should not be played by two processes at the same time (gameId: {gameId})"
+    if gameId in lbs.gameProcesses:
+        logError fmt"A single game should not be played by two processes at the same time (gameId: {gameId})"
+        lbs.gameProcesses[gameId].kill
+        sleep 1000
+        lbs.garbageCollectGameProcesses
+
+    doAssert gameId notin lbs.gameProcesses, "It shouldn't be there by anymore by now ..."
 
     lbs.gameProcesses[gameId] = startProcess(
         command = getCurrentDir() & "/playLichessGame",
