@@ -370,6 +370,9 @@ proc main() =
             try:
                 discard bgs.requestsSession.jsonResponse(httpPost, query, token)
             except CatchableError:
+                if "Not your turn, or game already over" in getCurrentExceptionMsg():
+                    logInfo "Tried to play move when it's not our turn, or game already over"
+                    continue
                 logError &"Failed to send move {move} for game {gameId} to lichess\nQuery: {query}\nException: ", getCurrentExceptionMsg()
                 raise
             bgs.sentMovesForPositions.add gameState.currentPosition.fen
