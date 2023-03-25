@@ -4,7 +4,8 @@ import std/[
     strformat,
     tables,
     os,
-    options
+    options,
+    random
 ]
 
 import nimpy
@@ -13,6 +14,7 @@ import log
 
 export PyObject
 
+const maxNumRetries = 5
 
 let
     requests = pyImport("requests")
@@ -24,22 +26,33 @@ proc getRequestsSession*(): PyObject =
 iterator streamEvents*(url: string, token: string): Option[JsonNode] =
     {.warning[BareExcept]:off.}
     try:
-        let response = requests.get(
-            url = url,
-            headers = {"Authorization": fmt"Bearer {token}", "Accept": "x-ndjson"}.toTable,
-            stream = true,
-            timeout = 15
-        )
+        for i in 1..maxNumRetries:
+            let response = requests.get(
+                url = url,
+                headers = {"Authorization": fmt"Bearer {token}", "Accept": "x-ndjson"}.toTable,
+                stream = true,
+                timeout = 15
+            )
 
-        let lines = response.iter_lines()
-        while true:
-            let line = py.next(lines).to(string)
-            if line.strip.len > 0 and line.strip[0] == '{':
-                let json = line.parseJson
-                yield some json
-            else:
-                # TODO this is just a hack so that the loop gets a regular response, so that I don#t need to do something multithreaded
-                yield none JsonNode
+            let lines = response.iter_lines()
+            while true:
+                try:
+                    let line = py.next(lines).to(string)
+                    if line.strip.len > 0 and line.strip[0] == '{':
+                        let json = line.parseJson
+                        yield some json
+                    else:
+                        # TODO this is just a hack so that the loop gets a regular response, so that I don#t need to do something multithreaded
+                        yield none JsonNode
+                except Exception:
+                    sleep 60_000 + rand(0..10_000)
+                    if response.status_code.to(int) == 429:
+                        logWarn "Rate limited."
+                        break
+                    if "<class 'StopIteration'>" in getCurrentExceptionMsg():
+                        logWarn "Stream ended with a stopped iteration: ", url, "\n(exception message:", getCurrentExceptionMsg(), ")"
+                    else:
+                        raise
     except CatchableError:
         raise
     except Exception:
@@ -51,7 +64,6 @@ type HttpMethod* = enum
     httpPost, httpGet
 
 proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token: string, payload = initTable[string, string]()): JsonNode =
-    const maxNumRetries = 5
     let headers = {
         "Authorization": "Bearer " & token,
         "Accept": "application/json"
@@ -73,7 +85,7 @@ proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token
                 
                 if status == 429: # rate limited, should wait at least a minute
                     logWarn "Rate limited."
-                    sleep 70_000
+                    sleep 60_000 + rand(0..10_000)
                 else:
                     break                    
             except Exception:
