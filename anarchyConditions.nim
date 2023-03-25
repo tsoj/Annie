@@ -194,9 +194,6 @@ proc checkIfCommentApplicable*(commentType: TypedParam[enemyCanPushPawnForMeToDo
 proc checkIfCommentApplicable*(commentType: TypedParam[enemyCanCaptureEnPassant], cci: CommentConditionInfo): bool =
     doAssert cci.currentPosition.enemy == cci.botColor, "Only consider this when it's the enemys turn"
 
-    if rand(1.0) < 0.1:
-        return false
-
     for move in cci.currentPosition.legalMoves:
         if move.capturedEnPassant:
             return true
