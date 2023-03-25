@@ -63,9 +63,9 @@ const maxWaitTimeBeforeStarted = initDuration(seconds = 60)
 let startTime = now()
 
 proc abortGame(bgs: var BotGameState) =
-    bgs.sendMessage "Abort! Abort! Abort!"
     let query = fmt"https://lichess.org/api/bot/game/{gameId}/abort"
     discard bgs.requestsSession.jsonResponse(httpPost, query, token)
+    logInfo "Aborted game"
 
 proc main() =
 
