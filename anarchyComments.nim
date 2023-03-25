@@ -100,8 +100,11 @@ proc sendMessage*(bgs: var BotGameState, text: string, toSpectator = false, toPl
 
             let
                 lastWordInLine = i == words.len - 1
-                lastWord = lastWordInLine and lineNumber == lines.len - 1
-                nextPotentialSmallText = smallText & (if lastWordInLine: "" else: " " & words[i + 1] & (if lastWord: "" else: " …"))
+                nextWordIsLastWordInLine = i == words.len - 2
+                inLastLine = lineNumber == lines.len - 1
+                lastWord = lastWordInLine and inLastLine
+                nextWordIsLastWord = nextWordIsLastWordInLine and inLastLine
+                nextPotentialSmallText = smallText & (if lastWordInLine: "" else: " " & words[i + 1] & (if nextWordIsLastWord: "" else: " …"))
 
             if i == words.len - 1 or nextPotentialSmallText.len > lichessChatCharLimit:
                 if not lastWord:
