@@ -91,7 +91,7 @@ const commentTypeCooldown*: array[CommentType, tuple[halfMoves: int, timeInterva
     enemyDoesSecondKingCloudMove: (halfMoves: 0, timeInterval: 1),
     enemyCapturedEnPassant: (halfMoves: 0, timeInterval: 1),
     weCaptureEnPassant: (halfMoves: 0, timeInterval: 1),
-    weCheckedEnemy: (halfMoves: 8, timeInterval: 20),
+    weCheckedEnemy: (halfMoves: 8, timeInterval: 40),
     weBlundered: (halfMoves: 20, timeInterval: 30),
     rageQuit: (halfMoves: 0, timeInterval: 0),
     enemeyPromotingToQueen: (halfMoves: 4, timeInterval: 20),
