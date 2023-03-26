@@ -31,6 +31,8 @@ nim default Annie.nim
 The resulting binary can be used as a UCI chess engine.  
 There will be an UCI setting called `DifficultyLevel` which allows to select the strength of the engine, 1 being the weakest and wildest, and 10 being the strongest (but also most boring) setting.
 
+Pre-compiled binaries can be found [here](https://github.com/tsoj/Annie/releases).
+
 ### License
 
 Copyright © Jost Triller
