@@ -10,7 +10,7 @@ Depending on how well you've played recently, a level from **A1** to **C3** will
 
 Annie is based on the chess engine [Nalwald](https://gitlab.com/tsoj/Nalwald).
 
-### Compiling and running
+### Compiling and running the Lichess BOT
 
 First you need [Nim](https://nim-lang.org/), [nimpy](https://github.com/yglukhov/nimpy), [Python](https://www.python.org/), and [Requests](https://pypi.org/project/requests/).
 
@@ -19,6 +19,17 @@ Copy `config.default.json` to `config.json` and replace the place-holder for `"l
 Now run `./runLichessBot.sh` and you can start playing the bot on lichess!
 
 (Some of the code also has an anarchy feeling to it, but that's definitely intended ...)
+
+## Compiling the UCI engine
+
+You need the [Nim](https://nim-lang.org/) compiler (version 1.6 or higher) and the Clang compiler.
+
+```
+nim default Annie.nim
+```
+
+The resulting binary can be used as a UCI chess engine.  
+There will be an UCI setting called `DifficultyLevel` which allows to select the strength of the engine, 1 being the weakest and wildest, and 10 being the strongest (but also most boring) setting.
 
 ### License
 
