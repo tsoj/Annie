@@ -14,18 +14,23 @@ import
     evalParameters,
     defaultParameters,
     version,
+    anarchyParameters
+
+import std/[
     times,
     strutils,
     strformat,
     atomics,
     threadpool,
     os
+]
 
 const
     defaultHashSizeMB = 4
     maxHashSizeMB = 1_048_576
     defaultNumThreads = 1
     maxNumThreads = 512
+    defaultDifficultyLevel = 1.DifficultyLevel
 
 type UciState = object
     position: Position
@@ -35,15 +40,23 @@ type UciState = object
     searchRunningFlag: Atomic[bool]
     numThreads: int
     multiPv: int
+    difficultyLevel: DifficultyLevel
 
 proc uci() =
     echo "id name Nalwald " & version()
     echo "id author Jost Triller"
     echo "option name Hash type spin default ", defaultHashSizeMB, " min 1 max ", maxHashSizeMB
     echo "option name Threads type spin default ", defaultNumThreads, " min 1 max ", maxNumThreads
+    echo "option name DifficultyLevel type spin default ", defaultDifficultyLevel, " min ", DifficultyLevel.low, " max ", DifficultyLevel.high
     echo "option name MultiPV type spin default 1 min 1 max 1000"
     echo "option name UCI_Chess960 type check default false"
     echo "uciok"
+
+proc uciNewGame(uciState: var UciState) =
+    if uciState.searchRunningFlag.load:
+        echo "Can't start new UCI game when search is still running"
+    else:
+        uciState.hashTable.clear()
 
 proc setOption(uciState: var UciState, params: seq[string]) =
 
@@ -75,6 +88,14 @@ proc setOption(uciState: var UciState, params: seq[string]) =
                 echo "Invalid value"
             else:
                 uciState.multiPv = newMultiPv
+        of "DifficultyLevel".toLowerAscii:
+            let dli = params[3].parseInt
+            if dli notin DifficultyLevel.low.int .. DifficultyLevel.high.int:
+                echo "Invalid value"
+            else:
+                uciState.difficultyLevel = dli.DifficultyLevel
+                uciState.uciNewGame()
+
         else:
             echo "Unknown option: ", params[1]
     else:
@@ -143,7 +164,8 @@ proc go(uciState: var UciState, params: seq[string], searchThreadResult: var Flo
         multiPv: uciState.multiPv,
         searchMoves: newSeq[Move](0),
         numThreads: uciState.numThreads,
-        nodes: uint64.high
+        nodes: uint64.high,
+        difficultyLevel: uciState.difficultyLevel
     )
 
     for i in 0..<params.len:
@@ -184,12 +206,6 @@ proc go(uciState: var UciState, params: seq[string], searchThreadResult: var Flo
     
     while not (uciState.searchRunningFlag.load or searchThreadResult.isReady):
         sleep(1)
-
-proc uciNewGame(uciState: var UciState) =
-    if uciState.searchRunningFlag.load:
-        echo "Can't start new UCI game when search is still running"
-    else:
-        uciState.hashTable.clear()
 
 proc test(params: seq[string]) =
     seeTest()

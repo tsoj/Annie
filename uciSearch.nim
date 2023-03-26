@@ -6,12 +6,17 @@ import
     timeManagedSearch,
     hashTable,
     evaluation,
+    anarchyParameters
+
+import std/[
     atomics,
     times,
     strformat,
     strutils,
     math,
     algorithm
+]
+
 
 func infoString(
     iteration: int,
@@ -68,6 +73,7 @@ type SearchInfo* = object
     searchMoves*: seq[Move]
     numThreads*: int
     nodes*: uint64
+    difficultyLevel*: DifficultyLevel
 
 proc uciSearchSinglePv(searchInfo: SearchInfo) =
     var
@@ -84,7 +90,8 @@ proc uciSearchSinglePv(searchInfo: SearchInfo) =
         timeLeft = searchInfo.timeLeft,
         moveTime = searchInfo.moveTime,
         numThreads = searchInfo.numThreads,
-        maxNodes = searchInfo.nodes
+        maxNodes = searchInfo.nodes,
+        difficultyLevel = searchInfo.difficultyLevel
     ):
         doAssert pv.len >= 1
         bestMove = pv[0]
@@ -142,7 +149,8 @@ proc uciSearch*(searchInfo: SearchInfo) =
                     timeLeft = searchInfo.timeLeft,
                     moveTime = searchInfo.moveTime,
                     numThreads = searchInfo.numThreads,
-                    maxNodes = searchInfo.nodes
+                    maxNodes = searchInfo.nodes,
+                    difficultyLevel = searchInfo.difficultyLevel
                 ):
                     yield SearchResult(move: move, value: value, pv: pv, nodes: nodes, passedTime: passedTime)
         iterators.add genIter(newPosition, move)
