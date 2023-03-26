@@ -105,9 +105,9 @@ proc main() =
             let gameFullNode = gameFullNode.get
 
             if gameFullNode{"type"}.getStr != "gameFull":
-                let msg = &"Didn't receive expected \"gameFull\" JSON type: {gameFullNode}"
-                logError msg
-                raise newException(IOError, msg)
+                logWarn &"Didn't receive expected \"gameFull\" JSON type: {gameFullNode}"
+                continue
+
             lichessGame = some newLichessGame(gameFullNode, botUserId)
             difficultyLevelOpt = some historyOfGameResultsFileName.getDifficultyLevel(lichessGame.get.opponentElo)
             break # only the first event (initial gamestate) is important
@@ -222,9 +222,8 @@ proc main() =
                 # ignore for now
                 continue
 
-            if nodeType != "gameFull":                
-                let msg = &"Didn't receive expected \"gameState\" JSON type: {jsonNode}"
-                logError msg                
+            if nodeType != "gameFull":
+                logWarn &"Didn't receive expected \"gameState\" JSON type: {jsonNode}"                
                 continue
 
             jsonNode{"state"}
