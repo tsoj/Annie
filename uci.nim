@@ -43,7 +43,7 @@ type UciState = object
     difficultyLevel: DifficultyLevel
 
 proc uci() =
-    echo "id name Nalwald " & version()
+    echo "id name Annie " & version()
     echo "id author Jost Triller"
     echo "option name Hash type spin default ", defaultHashSizeMB, " min 1 max ", maxHashSizeMB
     echo "option name Threads type spin default ", defaultNumThreads, " min 1 max ", maxNumThreads
@@ -274,7 +274,7 @@ proc pawnStructureMaskValue(uciState: UciState, params: seq[string]) =
         echo "Value: ", value, " cp"
 
 proc uciLoop*() =
-    echo fmt"---------------- Nalwald ----------------"
+    echo fmt"----------------- Annie -----------------"
     echo fmt"       __,      o     n_n_n   ooooo    + "
     echo fmt" o    // o\    ( )    \   /    \ /    \ /"
     echo fmt"( )   \  \_>   / \    |   |    / \    ( )"

@@ -1,6 +1,9 @@
 Nalwald*
 !Nalwald.nim
 !Nalwald.nims
+Annie*
+!Annie.nim
+!Annie.nims
 perf.data*
 callgrind.out.*
 profile_results.txt

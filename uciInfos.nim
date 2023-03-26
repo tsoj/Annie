@@ -156,7 +156,7 @@ proc help*(params: openArray[string]) =
 proc about*(extra = true) =
     const s = readFile("README.md")
     echo "-----------------------------------------"
-    echo "Nalwald ", version()
+    echo "Annie ", version()
     echo "Compiled at ", compileDate()
     echo "Copyright © 2016-", compileYear() , " by Jost Triller"
     echo "-----------------------------------------"
