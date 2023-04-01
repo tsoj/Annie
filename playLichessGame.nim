@@ -236,7 +236,7 @@ proc main() =
 
 
         if not sentGreetingMessage:
-            if gameState.positionMoveHistory.len == 0:
+            if gameState.positionMoveHistory.len <= 1:
                 sleep 500
                 doAssert bgs.sendComment greeting
                 bgs.sendMessage messageStartingDifficultyLevel(bgs.difficultyLevel)
