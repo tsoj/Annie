@@ -33,7 +33,7 @@ doAssert maxConcurrentGames in 1..50, "At least one and at most 50 concurrent ga
 doAssert historyOfGameResultsFileName.len > 0 and historyOfGameResultsFileName[0] == '/', "Should be an absolute path"
 doAssert hashSizeMegaByte > 0, "Hash size should be at least 1 MB"
 
-logInfo &"Arguments:\n{token = }\n{historyOfGameResultsFileName = }\n{anarchyCommentsFileName = }\n{hashSizeMegaByte = }\n{maxConcurrentGames = }\n{maxFrequencyBotGames = }"
+logInfo &"Arguments:\n{token = }\n{historyOfGameResultsFileName = }\n{anarchyCommentsFileName = }\n{hashSizeMegaByte = }\n{maxConcurrentGames = }\n{maxFrequencyBotGames.inMinutes = }"
 
 historyOfGameResultsResetAllLockFiles historyOfGameResultsFileName
 
