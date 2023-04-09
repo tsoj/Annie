@@ -1,3 +1,7 @@
+import
+    lichessNetUtils,
+    log,
+    historyOfGameResults
 
 import std/[
     strutils,
@@ -7,13 +11,9 @@ import std/[
     os,
     osproc,
     posix,
-    options
+    options,
+    times
 ]
-
-import
-    lichessNetUtils,
-    log,
-    historyOfGameResults
 
 let configJsonNode = readFile("config.json").parseJson
 
@@ -27,6 +27,7 @@ let
     anarchyCommentsFileName = configJsonNode["anarchyCommentsFileName"].getStr.absolutePath
     hashSizeMegaByte = configJsonNode["hashSizeMegaByte"].getInt
     maxConcurrentGames = configJsonNode["concurrentGames"].getInt
+    maxFrequencyBotGames = initDuration(minutes = configJsonNode["maxFrequencyBotGamesMinutes"].getInt)
 
 doAssert maxConcurrentGames in 1..50, "At least one and at most 50 concurrent games allowed"
 doAssert historyOfGameResultsFileName.len > 0 and historyOfGameResultsFileName[0] == '/', "Should be an absolute path"
@@ -39,6 +40,7 @@ historyOfGameResultsResetAllLockFiles historyOfGameResultsFileName
 type LichessBotState = object
     gameProcesses: Table[string, Process]
     numReservedProcesses: int = 0
+    lastBotGame: DateTime
 
 proc tryReserveGameProcess(lbs: var LichessBotState): bool =
     if lbs.gameProcesses.len + lbs.numReservedProcesses < maxConcurrentGames:
@@ -133,13 +135,14 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         challengeNode = jsonNode{"challenge"}
         challengeId = challengeNode{"id"}.getStr
         opponentId = challengeNode{"challenger"}{"id"}.getStr
+        isBot = challengeNode{"challenger"}{"title"}.getStr == "BOT"
 
     template decline(reason: string) =
         discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/decline", token, {"reason": reason}.toTable)
         logInfo fmt"Declined challenge {challengeId} by {opponentId} because of ", reason
 
     # decline challenge if needed
-    if challengeNode{"challenger"}{"title"}.getStr == "BOT":
+    if isBot and lbs.lastBotGame + maxFrequencyBotGames >= now():
         decline(reason = "noBot")
         return
 
@@ -169,6 +172,8 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
 
     # accept challenge
     discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/accept", token)
+    if isBot:
+        lbs.lastBotGame = now()
     logInfo fmt"Accepted challenge {challengeId}"
 
 proc handleChallengeCanceled(lbs: var LichessBotState, jsonNode: JsonNode) =
@@ -210,6 +215,7 @@ proc listenToIncomingEvents(lbs: var LichessBotState) =
 
 proc main() =
     var lbs: LichessBotState
+    lbs.lastBotGame = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     while true:        
         try:
             echoLog "Playing as ", jsonResponse(httpGet, "https://lichess.org/api/account", token){"id"}.getStr

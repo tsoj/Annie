@@ -3,5 +3,6 @@
     "historyOfGameResultsFileName": "historyOfGameResults.txt",
     "anarchyCommentsFileName": "anarchyComments.json",
     "hashSizeMegaByte": 140,
-    "concurrentGames": 3
+    "concurrentGames": 3,
+    "maxFrequencyBotGamesMinutes": 1440
 }
