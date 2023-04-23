@@ -48,7 +48,7 @@ proc tryReserveGameProcess(lbs: var LichessBotState): bool =
         return true
     false
 
-proc garbageCollectGameProcesses(lbs: var LichessBotState) =
+proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: string = "") =
 
     var finishedProcessGameIds: seq[string]
     for gameId, process in lbs.gameProcesses:
@@ -57,10 +57,12 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState) =
             # process finished
             if exitCode == 0:
                 logInfo "Process playing game ", gameId, " finished successfully"
+            elif gameId == ignoreKilledGameId and exitCode - 128 == 9: # exit code -9 means programm got killed
+                logInfo "Process playing game ", gameId, " got killed. Not trying to restart it."
             else:
                 let msg = fmt"Process playing game {gameId} finished with potential error. Exit code: {exitCode} (minus 128: {exitCode - 128})"
                 logError msg
-                raise newException(Defect, msg) # should not be catchable
+                raise newException(CatchableError, msg)
 
             finishedProcessGameIds.add gameId
 
@@ -93,7 +95,7 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
         logError fmt"A single game should not be played by two processes at the same time (gameId: {gameId})"
         lbs.gameProcesses[gameId].kill
         sleep 1000
-        lbs.garbageCollectGameProcesses
+        lbs.garbageCollectGameProcesses(ignoreKilledGameId = gameId)
 
     doAssert gameId notin lbs.gameProcesses, "It shouldn't be there by anymore by now ..."
 
