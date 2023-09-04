@@ -313,16 +313,16 @@ func anarchyParams*(difficultyLevel: DifficultyLevel): AnarchyParameters =
     anarchyParamsTable[difficultyLevel]
 
 const eloEstimateTable: array[DifficultyLevel, float] = [
-    1: 1700.0,
-    2: 1800.0,
-    3: 1900.0,
-    4: 2100.0,
-    5: 2300.0,
-    6: 2500.0,
-    7: 2600.0,
-    8: 2700.0,
-    9: 2800.0,
-    10: 2900.0
+    1: 1900.0,
+    2: 2100.0,
+    3: 2300.0,
+    4: 2400.0,
+    5: 2500.0,
+    6: 2600.0,
+    7: 2700.0,
+    8: 2800.0,
+    9: 2900.0,
+    10: 3000.0
 ]
 
 func difficultyEloEstimate*(difficultyLevel: DifficultyLevel): float =
