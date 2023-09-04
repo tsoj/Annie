@@ -56,9 +56,9 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         if exitCode != -1:
             # process finished
             if exitCode == 0:
-                logInfo "Process playing game ", gameId, " finished successfully"
+                echoLog "Process playing game ", gameId, " finished successfully"
             elif gameId == ignoreKilledGameId and exitCode - 128 == 9: # exit code -9 means programm got killed
-                logInfo "Process playing game ", gameId, " got killed. Not trying to restart it."
+                logWarn "Process playing game ", gameId, " got killed. Not trying to restart it."
             else:
                 let msg = fmt"Process playing game {gameId} finished with potential error. Exit code: {exitCode} (minus 128: {exitCode - 128})"
                 logError msg
@@ -70,6 +70,8 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         doAssert gameId in lbs.gameProcesses
         lbs.gameProcesses[gameId].close
         lbs.gameProcesses.del gameId
+
+    echoLog "Games running: ", lbs.gameProcesses.len
 
 proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameStart", jsonNode.pretty
@@ -114,6 +116,7 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     )
 
     echoLog fmt"Launched process for game https://lichess.org/{gameId} against {opponentName}"
+    echoLog "Games running: ", lbs.gameProcesses.len
 
     if lbs.numReservedProcesses >= 1:
         lbs.numReservedProcesses -= 1
