@@ -130,7 +130,6 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
 proc handleGameFinish(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameFinish", jsonNode.pretty
     echoLog "Game officially finished: ", jsonNode{"game"}{"id"}.getStr
-    echoLog "Games running: ", lbs.gameProcesses.len
 
 proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "challenge", jsonNode.pretty
