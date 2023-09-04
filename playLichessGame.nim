@@ -26,7 +26,7 @@ import
     anarchyComments,
     search,
     evaluation
-    
+
 randomize(epochTime().int64 mod 500_000)
 
 doAssert commandLineParams().len == 6, "Need following arguments: <parent PID> <lichess gameId> <lichess token> <historyOfGameResultsFileName> <anarchyCommentsFileName> <hashSizeMegaByte>"

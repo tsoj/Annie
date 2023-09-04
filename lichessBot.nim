@@ -56,7 +56,7 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         if exitCode != -1:
             # process finished
             if exitCode == 0:
-                echoLog "Process playing game ", gameId, " finished successfully"
+                logInfo "Process playing game ", gameId, " finished successfully"
             elif gameId == ignoreKilledGameId and exitCode - 128 == 9: # exit code -9 means programm got killed
                 logWarn "Process playing game ", gameId, " got killed. Not trying to restart it."
             else:
@@ -70,9 +70,6 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         doAssert gameId in lbs.gameProcesses
         lbs.gameProcesses[gameId].close
         lbs.gameProcesses.del gameId
-
-    if finishedProcessGameIds.len > 0:
-        echoLog "Games running: ", lbs.gameProcesses.len
 
 proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameStart", jsonNode.pretty
@@ -132,7 +129,8 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
 
 proc handleGameFinish(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameFinish", jsonNode.pretty
-    logInfo "Game officially finished: ", jsonNode{"game"}{"id"}.getStr
+    echoLog "Game officially finished: ", jsonNode{"game"}{"id"}.getStr
+    echoLog "Games running: ", lbs.gameProcesses.len
 
 proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "challenge", jsonNode.pretty
