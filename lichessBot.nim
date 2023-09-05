@@ -71,9 +71,6 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         lbs.gameProcesses[gameId].close
         lbs.gameProcesses.del gameId
 
-    if finishedProcessGameIds.len > 0:
-        echoLog "Games running: ", lbs.gameProcesses.len
-
 proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameStart", jsonNode.pretty
     
@@ -132,7 +129,12 @@ proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
 
 proc handleGameFinish(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameFinish", jsonNode.pretty
-    echoLog "Game officially finished: ", jsonNode{"game"}{"id"}.getStr
+    let gameId = jsonNode{"game"}{"id"}.getStr
+    echoLog "Game officially finished: ", gameId
+    var numActiveGames = lbs.gameProcesses.len
+    if gameId in lbs.gameProcesses:
+        numActiveGames -= 1
+    echoLog "Games running: ", numActiveGames
 
 proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "challenge", jsonNode.pretty
