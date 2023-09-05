@@ -71,6 +71,9 @@ proc garbageCollectGameProcesses(lbs: var LichessBotState, ignoreKilledGameId: s
         lbs.gameProcesses[gameId].close
         lbs.gameProcesses.del gameId
 
+    if finishedProcessGameIds.len > 0:
+        echoLog "Games running: ", lbs.gameProcesses.len
+
 proc handleGameStart(lbs: var LichessBotState, jsonNode: JsonNode) =
     doAssert jsonNode{"type"}.getStr == "gameStart", jsonNode.pretty
     
