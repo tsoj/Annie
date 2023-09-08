@@ -159,6 +159,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
     # decline challenge if needed
     if opponentName in blockedPlayers or opponentId in blockedPlayers:
         decline(reason = "noBot")
+        logInfo fmt"Additional Info: Declined challenge {challengeId} because {opponentId} is in block list"
         return
 
     if isBot and lbs.lastBotGame + maxFrequencyBotGames >= now():
