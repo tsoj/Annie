@@ -28,6 +28,12 @@ let
     hashSizeMegaByte = configJsonNode["hashSizeMegaByte"].getInt
     maxConcurrentGames = configJsonNode["concurrentGames"].getInt
     maxFrequencyBotGames = initDuration(minutes = configJsonNode["maxFrequencyBotGamesMinutes"].getInt)
+    blockedPlayers = block:
+        var blockedPlayers: seq[string]
+        if "blockedPlayers" in configJsonNode:
+            for blockedPlayerNode in configJsonNode["blockedPlayers"]:
+                blockedPlayers.add blockedPlayerNode.getStr
+        blockedPlayers
 
 doAssert maxConcurrentGames in 1..50, "At least one and at most 50 concurrent games allowed"
 doAssert historyOfGameResultsFileName.len > 0 and historyOfGameResultsFileName[0] == '/', "Should be an absolute path"
@@ -143,6 +149,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         challengeNode = jsonNode{"challenge"}
         challengeId = challengeNode{"id"}.getStr
         opponentId = challengeNode{"challenger"}{"id"}.getStr
+        opponentName = challengeNode{"challenger"}{"name"}.getStr
         isBot = challengeNode{"challenger"}{"title"}.getStr == "BOT"
 
     template decline(reason: string) =
@@ -150,6 +157,10 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         logInfo fmt"Declined challenge {challengeId} by {opponentId} because of ", reason
 
     # decline challenge if needed
+    if opponentName in blockedPlayers or opponentId in blockedPlayers:
+        decline(reason = "noBot")
+        return
+
     if isBot and lbs.lastBotGame + maxFrequencyBotGames >= now():
         decline(reason = "noBot")
         return
