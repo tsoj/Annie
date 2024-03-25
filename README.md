@@ -10,9 +10,9 @@ Depending on how well you've played recently, a level from **A1** to **C3** will
 
 Annie is based on the chess engine [Nalwald](https://gitlab.com/tsoj/Nalwald).
 
-### Compiling and running the Lichess BOT
+## Compiling and running the Lichess BOT
 
-First you need [Nim](https://nim-lang.org/).
+You need [Nim](https://nim-lang.org/) and [Clang](https://clang.llvm.org/).
 
 Copy `config.default.json` to `config.json` and replace the place-holder for `"lichessToken"` with your lichess bot account token. You can also edit the other available config parameters.
 
@@ -33,6 +33,6 @@ There will be an UCI setting called `DifficultyLevel` which allows to select the
 
 Pre-compiled binaries can be found [here](https://github.com/tsoj/Annie/releases).
 
-### License
+## License
 
 Copyright © Jost Triller

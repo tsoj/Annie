@@ -154,9 +154,9 @@ proc trySendSomeComments(
             if comment.isSome:
                 if not madeComment:
                     if gameState.timeLeft(cci.botColor) >= initDuration(seconds = 10):
-                        sleep sleepTime.inMilliseconds
+                        sleep sleepTime.inMilliseconds.int
                     else:
-                        sleep min(sleepTime.inMilliseconds, 100)
+                        sleep min(sleepTime.inMilliseconds.int, 100)
                 madeComment = true
                 bgsAddr[].sendMessage comment.get
                 bgsAddr[].registerSentComment commentType, gameState, comment.get
