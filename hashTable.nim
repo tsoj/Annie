@@ -20,7 +20,7 @@ type
     HashTable* {.requiresInit.} = object
         nonPvNodes: seq[HashTableEntry]
         hashFullCounter: int
-        pvNodes: Table[uint64, CountedHashTableEntry]
+        pvNodes: Table[ZobristKey, CountedHashTableEntry]
         pvTableMutex: Lock
         randState: Rand
 
@@ -41,19 +41,6 @@ func nodeType*(entry: HashTableEntry): NodeType =
 func sameUpperZobristKey(a: uint64, b: uint64): bool =
     (a and not eighteenBitMask) == (b and not eighteenBitMask)
 
-func newHashTable*(): HashTable =
-    result = HashTable(
-        nonPvNodes: newSeq[HashTableEntry](0),
-        hashFullCounter: 0,
-        pvNodes: Table[uint64, CountedHashTableEntry](),
-        pvTableMutex: Lock(),
-        randState: initRand(0)
-    )
-    initLock result.pvTableMutex
-
-template isEmpty*(entry: HashTableEntry): bool =
-    entry == noEntry
-
 func clear*(ht: var HashTable) =
     ht.randState = initRand(0)
     ht.pvNodes.clear
@@ -61,13 +48,30 @@ func clear*(ht: var HashTable) =
     for entry in ht.nonPvNodes.mitems:
         entry = noEntry
 
-func setSize*(ht: var HashTable, sizeInBytes: int) =
-    let numEntries = sizeInBytes div sizeof(HashTableEntry)
-    ht.nonPvNodes.setLen(max(numEntries, minHashSize))
+func setLen*(ht: var HashTable, newLen: int) =
+    ht.nonPvNodes.setLen(max(newLen, minHashSize))
     ht.clear
 
+func setByteSize*(ht: var HashTable, sizeInBytes: int) =
+    let numEntries = sizeInBytes div sizeof(HashTableEntry)
+    ht.setLen numEntries
+
+func newHashTable*(len = 0): HashTable =
+    result = HashTable(
+        nonPvNodes: newSeq[HashTableEntry](0),
+        hashFullCounter: 0,
+        pvNodes: Table[ZobristKey, CountedHashTableEntry](),
+        pvTableMutex: Lock(),
+        randState: initRand(0)
+    )
+    initLock result.pvTableMutex
+    result.setLen len
+
+template isEmpty*(entry: HashTableEntry): bool =
+    entry == noEntry
+
 func age*(ht: var HashTable) =
-    var deleteQueue: seq[uint64]
+    var deleteQueue: seq[ZobristKey]
     for (key, entry) in ht.pvNodes.mpairs:
         if entry.lookupCounter <= 0:
             deleteQueue.add(key)
@@ -95,7 +99,7 @@ func shouldReplace(ht: var HashTable, newEntry, oldEntry: HashTableEntry): bool 
 
 func add*(
     ht: var HashTable,
-    zobristKey: uint64,
+    zobristKey: ZobristKey,
     nodeType: NodeType,
     value: Value,
     depth: Ply,
@@ -110,7 +114,7 @@ func add*(
         depth: depth,
         bestMove: bestMove
     )
-    doAssert entry.value == value
+    doAssert entry.value == value, $value & " vs " & $entry.value
     doAssert entry.nodeType == nodeType
     doAssert sameUpperZobristKey(entry.upperZobristKeyAndNodeTypeAndValue, zobristKey)
 
@@ -118,22 +122,26 @@ func add*(
 
     if nodeType == pvNode:
         withLock ht.pvTableMutex:
-            if (not ht.pvNodes.hasKey(zobristKey)) or ht.pvNodes[zobristKey].entry.depth <= depth:
+            if not ht.pvNodes.hasKey(zobristKey) or ht.pvNodes[zobristKey].entry.depth <= depth:
                 ht.pvNodes[zobristKey] = CountedHashTableEntry(entry: entry, lookupCounter: 1)
     else:
-        let i = zobristKey mod ht.nonPvNodes.len.uint64
+        doAssert ht.nonPvNodes.len > 0
+        let i = zobristKey mod ht.nonPvNodes.len.ZobristKey
         if ht.shouldReplace(entry, ht.nonPvNodes[i]):
             if ht.nonPvNodes[i].isEmpty:
                 ht.hashFullCounter += 1
             ht.nonPvNodes[i] = entry
 
-func get*(ht: var HashTable, zobristKey: uint64): HashTableEntry =
+func get*(ht: var HashTable, zobristKey: ZobristKey): HashTableEntry =
     
     if ht.pvNodes.hasKey(zobristKey):
-        ht.pvNodes[zobristKey].lookupCounter += 1
-        return ht.pvNodes[zobristKey].entry
+        withLock ht.pvTableMutex:
+            if ht.pvNodes.hasKey(zobristKey):
+                ht.pvNodes[zobristKey].lookupCounter += 1
+                return ht.pvNodes[zobristKey].entry
 
-    let i = zobristKey mod ht.nonPvNodes.len.uint64
+    doAssert ht.nonPvNodes.len > 0
+    let i = zobristKey mod ht.nonPvNodes.len.ZobristKey
     if not ht.nonPvNodes[i].isEmpty and sameUpperZobristKey(zobristKey, ht.nonPvNodes[i].upperZobristKeyAndNodeTypeAndValue):
         return ht.nonPvNodes[i]
 
@@ -143,7 +151,7 @@ func hashFull*(ht: HashTable): int =
     (ht.hashFullCounter * 1000) div ht.nonPvNodes.len
             
 func getPv*(ht: var HashTable, position: Position): seq[Move] =
-    var encounteredZobristKeys: seq[uint64]
+    var encounteredZobristKeys: seq[ZobristKey]
     var currentPosition = position
     while true:
         for key in encounteredZobristKeys:

@@ -92,3 +92,6 @@ proc stopwatch*(flag: ptr Atomic[bool], duration: Duration): bool =
         sleep(sleepTimeMs)
 
 const megaByteToByte* = 1_048_576
+
+func clampToType*[In, Out](x: In, OutType: typedesc[Out]): Out =
+    x.clamp(OutType.low.In, OutType.high.In).Out

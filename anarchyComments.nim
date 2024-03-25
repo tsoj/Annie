@@ -26,7 +26,7 @@ type
         halfMoveNumber*: int
         timePoint*: DateTime
     BotGameState* = object
-        requestsSession*: PyObject
+        requestsSession*: HttpClient
         lastComment*: array[CommentType, Option[CommentTimeStamp]]
         commentHistory*: seq[string]
         evalHistory*: seq[Value]
@@ -112,9 +112,9 @@ proc sendMessage*(bgs: var BotGameState, text: string, toSpectator = false, toPl
                 doAssert smallText.len <= lichessChatCharLimit
                 sleep 50
                 if toPlayer:
-                    discard bgs.requestsSession.jsonResponse(httpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "player", "text": smallText}.toTable)
+                    discard bgs.requestsSession.jsonResponse(HttpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "player", "text": smallText}.toTable)
                 if toSpectator:
-                    discard bgs.requestsSession.jsonResponse(httpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "spectator", "text": smallText}.toTable)
+                    discard bgs.requestsSession.jsonResponse(HttpPost, &"https://lichess.org/api/bot/game/{bgs.gameId}/chat", bgs.token, {"room": "spectator", "text": smallText}.toTable)
                 smallText = "…"
 
 

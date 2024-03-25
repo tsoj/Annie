@@ -1,87 +1,90 @@
 import std/[
+    net,
     json,
     strutils,
     strformat,
     tables,
     os,
     options,
-    random
+    random,
+    httpclient,
+    streams
 ]
-
-import nimpy
 
 import log
 
-export PyObject
+export HttpClient, HttpMethod
 
 const maxNumRetries = 5
 
-let
-    requests = pyImport("requests")
-    py = pyBuiltinsModule()
+proc getRequestsSession*(): HttpClient =
+    newHttpClient()
 
-proc getRequestsSession*(): PyObject =
-    requests.Session()
+iterator streamEvents*(host: string, path: string, token: string): Option[JsonNode] =
 
-iterator streamEvents*(url: string, token: string): Option[JsonNode] =
-    {.warning[BareExcept]:off.}
-    try:
-        for i in 1..maxNumRetries:
-            let response = requests.get(
-                url = url,
-                headers = {"Authorization": fmt"Bearer {token}", "Accept": "x-ndjson"}.toTable,
-                stream = true,
-                timeout = 15
-            )
+    for i in 1..maxNumRetries:
 
-            let lines = response.iter_lines()
+        try:
+            let s = newSocket()
+            wrapSocket(newContext(), s)
+            s.connect(host, Port(443))
+
+            let req = &"GET {path} HTTP/1.1\r\nHost: {host}\r\nAuthorization: Bearer {token}\r\nAccept: x-ndjson\r\n\r\n"
+            logDebug "Sending stream request: ", req
+
+            s.send(req)
             while true:
-                try:
-                    let line = py.next(lines).to(string)
-                    if line.strip.len > 0 and line.strip[0] == '{':
-                        let json = line.parseJson
-                        yield some json
-                    else:
-                        # TODO this is just a hack so that the loop gets a regular response, so that I don#t need to do something multithreaded
-                        yield none JsonNode
-                except Exception:
-                    sleep 60_000 + rand(0..10_000)
-                    if response.status_code.to(int) == 429:
+                let line = s.recvLine(timeout = 15_000)
+                logDebug line
+                if line.strip.len > 0 and line.strip[0] == '{':
+                    let json = line.parseJson
+                    yield some json
+                elif line.startsWith("HTTP/1.1 "):
+                    let
+                        words = line.splitWhitespace
+                        status = if words.len >= 2: words[1].parseInt else: 418
+                    if status == 200:
+                        continue
+                    elif status == 429:
                         logWarn "Rate limited."
+                        sleep 60_000 + rand(0..10_000)
                         break
-                    if "<class 'StopIteration'>" in getCurrentExceptionMsg():
-                        logWarn "Stream ended with a stopped iteration: ", url, "\n(exception message:", getCurrentExceptionMsg(), ")"
                     else:
-                        raise
-    except CatchableError:
-        raise
-    except Exception:
-        # doing this because nimpy sometimes raises a pure Exception
-        raise newException(CatchableError, getCurrentExceptionMsg())
-    {.warning[BareExcept]:on.}
+                        
+                        raise newException(IOError, &"Unexpected response.\nRequest: {req}\nStatus: {status}\nError: {line}")
+                else:
+                    # This is just a hack so that the loop gets a regular response, so that I don't need to do something multithreaded
+                    yield none JsonNode
 
-type HttpMethod* = enum
-    httpPost, httpGet
+        except CatchableError:
+            if i == maxNumRetries:
+                raise
+            logInfo "Retrying after getting an exception: ", getCurrentExceptionMsg()
+            sleep 500
 
-proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token: string, payload = initTable[string, string]()): JsonNode =
-    let headers = {
+proc jsonResponse*(client: var HttpClient, httpMethod: HttpMethod, url: string, token: string, payload = initTable[string, string]()): JsonNode =
+
+    client.headers = newHttpHeaders({
         "Authorization": "Bearer " & token,
-        "Accept": "application/json"
-    }.toTable
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    })
 
     let (body, status) = block:
         var
             body: string
             status: int
         for i in 1..maxNumRetries:
-            {.warning[BareExcept]:off.}
             try:                    
-                let response = case httpMethod:
-                    of httpGet: session.get(url, headers = headers, data = payload, timeout = 5)
-                    of httpPost: session.post(url, headers = headers, data = payload, timeout = 5)
+                let
+                    response = client.request(url, httpMethod = httpMethod, body = $(%payload))
+                    statusNumberStrings = response.status.splitWhitespace
 
-                status = response.status_code.to(int)
-                body = response.content.to(string)
+                if statusNumberStrings.len == 0:
+                    raise newException(IOError, "Unknown status code: " & response.status)
+
+                status = statusNumberStrings[0].parseInt
+                body = response.bodyStream.readAll
                 
                 if status == 429: # rate limited, should wait at least a minute
                     logWarn "Rate limited."
@@ -90,10 +93,9 @@ proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token
                     break                    
             except Exception:
                 if i == maxNumRetries:
-                    raise newException(CatchableError, getCurrentExceptionMsg())
+                    raise
                 logInfo "Retrying after getting an exception: ", getCurrentExceptionMsg()
                 sleep 500
-            {.warning[BareExcept]:on.}
         (body, status)
 
     if status != 200:
@@ -108,5 +110,9 @@ proc jsonResponse*(session: PyObject, httpMethod: HttpMethod, url: string, token
     result = body.parseJson
 
 proc jsonResponse*(httpMethod: HttpMethod, query: string, token: string, payload = initTable[string, string]()): JsonNode =
-    let session = getRequestsSession()
-    session.jsonResponse(httpMethod, query, token, payload)
+
+    var client = getRequestsSession()
+    try:
+        client.jsonResponse(httpMethod, query, token, payload)
+    finally:
+        client.close()

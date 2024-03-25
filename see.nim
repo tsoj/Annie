@@ -23,7 +23,7 @@ func getLeastValuableAttacker*(position: Position, target: Square): tuple[square
         enemy = position.enemy
         occupancy = position.occupancy
 
-    let attack = attackTablePawnCapture[enemy][target] and position[pawn] and position[us]
+    let attack = attackMaskPawnCapture(target, enemy) and position[pawn] and position[us]
     if attack != 0:
         return (attack.toSquare, pawn)
     
@@ -42,14 +42,13 @@ func see(position: var Position, target: Square, victim: Piece): Value =
     if source != noSquare:
 
         if attacker == pawn and (target >= a8 or target <= h1):
-            position.removePiece(us, attacker, source.toBitboard)
+            position.removePiece(us, attacker, source)
             result = queen.value - pawn.value
             currentVictim = queen
         else:
-            position.removePiece(us, attacker, source.toBitboard)
+            position.removePiece(us, attacker, source)
         
         position.us = position.enemy
-        position.enemy = position.enemy.opposite
 
         result = max(0, result + victim.value - position.see(target, currentVictim))
 
@@ -66,20 +65,19 @@ func see*(position: Position, move: Move): Value =
     var position = position
     var currentVictim = moved
 
-    position.removePiece(us, moved, source.toBitboard)
+    position.removePiece(us, moved, source)
 
     if move.capturedEnPassant:
-        position.removePiece(enemy, pawn, attackTablePawnQuiet[enemy][target])
-        position.removePiece(us, pawn, source.toBitboard)
+        position.removePiece(enemy, pawn, attackMaskPawnQuiet(target, enemy).toSquare)
+        position.removePiece(us, pawn, source)
     elif promoted != noPiece:
-        position.removePiece(us, moved, source.toBitboard)
+        position.removePiece(us, moved, source)
         result = promoted.value - pawn.value
         currentVictim = promoted
     else:
-        position.removePiece(us, moved, source.toBitboard)
+        position.removePiece(us, moved, source)
 
     position.us = enemy
-    position.enemy = enemy.opposite
 
     result += captured.value - position.see(target, currentVictim)
                 

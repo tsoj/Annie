@@ -172,7 +172,7 @@ proc checkIfCommentApplicable*(commentType: TypedParam[enemyCanPushPawnForMeToDo
     for move in cci.currentPosition.legalMoves:
         if move.moved == pawn and move.enPassantTarget != noSquare:
 
-            let potentialPawnAttackers = (attackTablePawnCapture[cci.currentPosition.us][move.enPassantTarget] and cci.currentPosition[pawn] and cci.currentPosition[cci.botColor])
+            let potentialPawnAttackers = (attackMaskPawnCapture(move.enPassantTarget, cci.currentPosition.us) and cci.currentPosition[pawn] and cci.currentPosition[cci.botColor])
 
             # only applicable when the potential en passant capture pawn moved there in a time window, such that
             # we don't comment on the same pawn twice 

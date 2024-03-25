@@ -62,11 +62,11 @@ func evaluateAnarchyBonus(position: Position, rootColor: Color, dl: DifficultyLe
     for color in white..black:
         for square in position[color] and position[pawn] and fifthRank[color]:
             doAssert not (square.isLowerEdge or square.isUpperEdge)
-            let doublePushPawns = attackTablePawnCapture[color][square.up(color)] and position[color.opposite] and position[pawn]
+            let doublePushPawns = attackMaskPawnCapture(square.up(color), color) and position[color.opposite] and position[pawn]
             for doublePushSourceSquare in doublePushPawns:
                 if ((
-                    attackTablePawnQuiet[color.opposite][doublePushSourceSquare] or
-                    attackTablePawnQuiet[color.opposite][doublePushSourceSquare.up(color.opposite)]
+                    attackMaskPawnQuiet(doublePushSourceSquare, color.opposite) or
+                    attackMaskPawnQuiet(doublePushSourceSquare.up(color.opposite), color.opposite)
                 ) and position.occupancy) == 0:
                     if color == rootColor:
                         result += anarchyParams(dl).bonusOurPawnReadyCaptureEnPassant
@@ -222,7 +222,7 @@ func search(
     if height > 0 and (
         height == Ply.high or
         position.insufficientMaterial or
-        position.fiftyMoveRuleHalfmoveClock >= 100 or
+        position.halfmoveClock >= 100 or
         state.gameHistory.checkForRepetition(position, height)
     ):
         return if height.isRootPlayer: anarchyParams(state.dl).bonusDraw else: 0.Value
@@ -502,5 +502,5 @@ func search*(
 
         # only if we can't take ourself, we try to offer en passant
         for move in position.legalMoves:
-            if move.enPassantTarget != noSquare and (attackTablePawnCapture[position.us][move.enPassantTarget] and position[pawn] and position[position.enemy]) != 0:
+            if move.enPassantTarget != noSquare and (attackMaskPawnCapture(move.enPassantTarget, position.us) and position[pawn] and position[position.enemy]) != 0:
                 checkMoveWithBonus(move, anarchyParams(state.dl).minValueOfferEnPassant)

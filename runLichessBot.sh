@@ -2,6 +2,7 @@
 
 
 nim c \
+--define:ssl \
 --mm:arc \
 --define:useMalloc \
 --passL:"-static" \
@@ -15,5 +16,5 @@ nim c \
 --passC:"-march=native" \
 --passC:"-mtune=native" \
 playLichessGame.nim && \
-nim c lichessBot.nim && 
+nim c --define:ssl lichessBot.nim && 
 ./lichessBot

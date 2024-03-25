@@ -26,7 +26,7 @@ var
         filename = logFilePath,
         fmtStr = "",
         mode = fmWrite,
-        levelThreshold = lvlInfo
+        levelThreshold = lvlDebug
     )
     loggingLock: Lock
 

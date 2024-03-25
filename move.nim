@@ -3,6 +3,8 @@ import
     bitboard,
     utils
 
+export types
+
 type Move* = distinct uint32
 # source: [0..6], target: [7..13], moved: [14..16], captured: [17..19], promoted: [20..22],
 # castled: 23, capturedEnPassant: 24, enPassantTarget: [25..31]
@@ -27,21 +29,21 @@ template create*(
     move = cast[Move](cast[uint32](move) or ((enPassantTarget.uint32 and 0b1111111) shl 25))
 
 template source*(move: Move): Square =
-    (cast[uint32](move) and 0b1111111).Square
+    (cast[uint32](move) and 0b1111111).clampToType(Square)
 template target*(move: Move): Square  =
-    ((cast[uint32](move) shr 7) and 0b1111111).Square
+    ((cast[uint32](move) shr 7) and 0b1111111).clampToType(Square)
 template moved*(move: Move): Piece =
-    ((cast[uint32](move) shr 14) and 0b111).Piece
+    ((cast[uint32](move) shr 14) and 0b111).clampToType(Piece)
 template captured*(move: Move): Piece =
-    ((cast[uint32](move) shr 17) and 0b111).Piece
+    ((cast[uint32](move) shr 17) and 0b111).clampToType(Piece)
 template promoted*(move: Move): Piece =
-    ((cast[uint32](move) shr 20) and 0b111).Piece
+    ((cast[uint32](move) shr 20) and 0b111).clampToType(Piece)
 template castled*(move: Move): bool =
     ((cast[uint32](move) shr 23) and 0b1).bool
 template capturedEnPassant*(move: Move): bool =
     ((cast[uint32](move) shr 24) and 0b1).bool
 template enPassantTarget*(move: Move): Square =
-    ((cast[uint32](move) shr 25) and 0b1111111).Square
+    ((cast[uint32](move) shr 25) and 0b1111111).clampToType(Square)
 
 const noMove*: Move = block:
     var move: Move

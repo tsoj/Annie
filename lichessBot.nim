@@ -153,7 +153,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         isBot = challengeNode{"challenger"}{"title"}.getStr == "BOT"
 
     template decline(reason: string) =
-        discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/decline", token, {"reason": reason}.toTable)
+        discard jsonResponse(HttpPost, fmt"https://lichess.org/api/challenge/{challengeId}/decline", token, {"reason": reason}.toTable)
         logInfo fmt"Declined challenge {challengeId} by {opponentId} because of ", reason
 
     # decline challenge if needed
@@ -191,7 +191,7 @@ proc handleChallenge(lbs: var LichessBotState, jsonNode: JsonNode) =
         return
 
     # accept challenge
-    discard jsonResponse(httpPost, fmt"https://lichess.org/api/challenge/{challengeId}/accept", token)
+    discard jsonResponse(HttpPost, fmt"https://lichess.org/api/challenge/{challengeId}/accept", token)
     if isBot:
         lbs.lastBotGame = now()
     logInfo fmt"Accepted challenge {challengeId}"
@@ -206,7 +206,7 @@ proc handleChallengeDeclined(lbs: var LichessBotState, jsonNode: JsonNode) =
 
 
 proc listenToIncomingEvents(lbs: var LichessBotState) =
-    for jsonNode in streamEvents("https://lichess.org/api/stream/event", token):
+    for jsonNode in streamEvents("lichess.org", "/api/stream/event", token):
 
         if jsonNode.isNone:
             continue
@@ -238,7 +238,8 @@ proc main() =
     lbs.lastBotGame = dateTime(2000, mJan, 01, 00, 00, 00, 00, utc())
     while true:        
         try:
-            echoLog "Playing as ", jsonResponse(httpGet, "https://lichess.org/api/account", token){"id"}.getStr
+            let userName = jsonResponse(HttpGet, "https://lichess.org/api/account", token){"id"}.getStr
+            echoLog "Playing as ", userName
             lbs.listenToIncomingEvents
             break
         except CatchableError:

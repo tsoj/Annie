@@ -5,135 +5,15 @@ import
     movegen,
     utils,
     bitboard,
-    castling,
+    castling
+
+export move, position
+
+import std/[
     strutils,
-    options
-
-
-
-func legalMoves*(position: Position): seq[Move] =
-    var moveArray: array[maxNumMoves, Move]
-    let numMoves = position.generateMoves(moveArray)
-    for i in 0..<numMoves:
-        let newPosition = position.doMove(moveArray[i])
-        if newPosition.inCheck(position.us):
-            continue
-        result.add(moveArray[i])
-
-func isChess960*(position: Position): bool =
-    let us = position.us
-    (position.enPassantCastling and homeRank[us]) != 0 and
-    (position.rookSource != classicalRookSource or position.kingSquare(us) != classicalKingSource[us])
-
-func toMove*(s: string, position: Position): Move =
-
-    if s.len != 4 and s.len != 5:
-        raise newException(ValueError, "Move string is wrong length: " & s)
-
-    let
-        source = parseEnum[Square](s[0..1])
-        target = parseEnum[Square](s[2..3])
-        promoted = if s.len == 5: s[4].toColoredPiece.piece else: noPiece
-
-    for move in position.legalMoves:
-        if move.source == source and move.promoted == promoted:
-            if move.target == target:
-                return move
-            if move.castled and target == kingTarget[position.us][position.castlingSide(move)] and not position.isChess960:
-                return move
-    raise newException(ValueError, "Move is illegal: " & s)
-
-proc toPosition*(fen: string, suppressWarnings = false): Position =
-    var fenWords = fen.splitWhitespace()    
-    if fenWords.len < 4:
-        raise newException(ValueError, "FEN must have at least 4 words")
-    if fenWords.len > 6 and not suppressWarnings:
-        echo "Warning: FEN shouldn't have more than 6 words"
-    while fenWords.len < 6:
-        fenWords.add("0")   
-
-    let piecePlacement = fenWords[0]
-    let activeColor = fenWords[1]
-    let castlingRights = fenWords[2]
-    let enPassant = fenWords[3]
-    let fiftyMoveRuleHalfmoveClock = fenWords[4]
-    let fullmoveNumber = fenWords[5]
-
-    var currentSquare = a8
-    for pieceChar in piecePlacement:
-        case pieceChar
-        of '/':
-            currentSquare = ((currentSquare).int8 - 16).Square
-        of '8', '7', '6', '5', '4', '3', '2', '1':
-            currentSquare = (currentSquare.int8 + parseInt($pieceChar)).Square
-        else:
-            if currentSquare > h8 or currentSquare < a1:
-                raise newException(ValueError, "FEN piece placement is not correctly formatted: " & $currentSquare)
-            try:
-                result.addColoredPiece(pieceChar.toColoredPiece, currentSquare)
-            except ValueError:
-                raise newException(ValueError, "FEN piece placement is not correctly formatted: " &
-                        getCurrentExceptionMsg())
-            currentSquare = (currentSquare.int8 + 1).Square
-    
-    # active color
-    case activeColor
-    of "w", "W":
-        result.us = white
-        result.enemy = black
-    of "b", "B":
-        result.us = black
-        result.enemy = white
-    else:
-        raise newException(ValueError, "FEN active color notation does not exist: " & activeColor)
-
-    # castling rights
-    result.enPassantCastling = 0
-    result.rookSource = [[d4,d4],[d4,d4]] # d4 should be ignored by castling and enpassant
-    for castlingChar in castlingRights:
-        let castlingChar = case castlingChar:
-        of '-':
-            continue
-        of 'K':
-            'H'
-        of 'k':
-            'h'
-        of 'Q':
-            'A'
-        of 'q':
-            'a'
-        else:
-            castlingChar
-
-        let
-            us = if castlingChar.isUpperAscii: white else: black
-            kingSquare = (result[us] and result[king]).toSquare
-            rookSource = (files[parseEnum[Square](castlingChar.toLowerAscii & "1")] and homeRank[us]).toSquare
-            castlingSide = if rookSource < kingSquare: queenside else: kingside
-        
-        result.enPassantCastling = result.enPassantCastling or rookSource.toBitboard
-        result.rookSource[us][castlingSide] = rookSource
-
-    # en passant square
-    if enPassant != "-":
-        try:
-            result.enPassantCastling = result.enPassantCastling or parseEnum[Square](enPassant.toLowerAscii).toBitboard
-        except ValueError:
-            raise newException(ValueError, "FEN en passant target square is not correctly formatted: " &
-                    getCurrentExceptionMsg())
-
-    # halfmove clock and fullmove number
-    try:
-        result.fiftyMoveRuleHalfmoveClock = parseUInt(fiftyMoveRuleHalfmoveClock).int16
-    except ValueError:
-        raise newException(ValueError, "FEN halfmove clock is not correctly formatted: " & getCurrentExceptionMsg())
-
-    try:
-        result.halfmovesPlayed = parseUInt(fullmoveNumber).int16 * 2
-    except ValueError:
-        raise newException(ValueError, "FEN fullmove number is not correctly formatted: " & getCurrentExceptionMsg())
-
-    result.zobristKey = result.calculateZobristKey
+    options,
+    bitops
+]
 
 func fen*(position: Position): string =
     result = ""
@@ -160,7 +40,7 @@ func fen*(position: Position): string =
     for color in [white, black]:
         for castlingSide in queenside..kingside:
             let rookSource = position.rookSource[color][castlingSide]
-            if (position.enPassantCastling and rookSource.toBitboard and homeRank[color]) != 0:
+            if rookSource != noSquare and (rookSource.toBitboard and homeRank[color]) != 0:
                 result &= ($rookSource)[0]
 
                 if result[^1] == 'h':
@@ -176,12 +56,12 @@ func fen*(position: Position): string =
 
     result &= " "
 
-    if (position.enPassantCastling and (ranks[a3] or ranks[a6])) != 0:
-        result &= $((position.enPassantCastling and (ranks[a3] or ranks[a6])).toSquare)
+    if position.enPassantTarget != 0:
+        result &= $(position.enPassantTarget.toSquare)
     else:
         result &= "-"
 
-    result &= " " & $position.fiftyMoveRuleHalfmoveClock & " " & $(position.halfmovesPlayed div 2)
+    result &= " " & $position.halfmoveClock & " " & $(position.halfmovesPlayed div 2)
 
 func `$`*(position: Position): string =
     result = boardString(proc (square: Square): Option[string] =
@@ -200,12 +80,172 @@ func debugString*(position: Position): string =
     for color in white..black:
         result &= $color & ":\n"
         result &= position[color].bitboardString & "\n"
-    result &= "enPassantCastling:\n"
-    result &= position.enPassantCastling.bitboardString & "\n"
+    result &= "enPassantTarget:\n"
+    result &= position.enPassantTarget.bitboardString & "\n"
     result &= "us: " & $position.us & ", enemy: " & $position.enemy & "\n"
-    result &= "halfmovesPlayed: " & $position.halfmovesPlayed & ", fiftyMoveRuleHalfmoveClock: " & $position.fiftyMoveRuleHalfmoveClock & "\n"
+    result &= "halfmovesPlayed: " & $position.halfmovesPlayed & ", halfmoveClock: " & $position.halfmoveClock & "\n"
     result &= "zobristKey: " & $position.zobristKey & "\n"
     result &= "rookSource: " & $position.rookSource
+
+func legalMoves*(position: Position): seq[Move] =
+    var pseudoLegalMoves = newSeq[Move](64)
+    while true:
+        # 'generateMoves' silently stops generating moves if the given array is not big enough
+        let numMoves = position.generateMoves(pseudoLegalMoves)
+        if pseudoLegalMoves.len <= numMoves:
+            pseudoLegalMoves.setLen(numMoves * 2)
+        else:
+            pseudoLegalMoves.setLen(numMoves)
+            for move in pseudoLegalMoves:
+                let newPosition = position.doMove(move)
+                if newPosition.inCheck(position.us):
+                    continue
+                result.add move
+            break
+
+func isChess960*(position: Position): bool =
+    for color in white..black:
+        if position.rookSource[color] != [noSquare, noSquare] and position.kingSquare(color) != classicalKingSource[color]:
+            return true
+        for side in queenside..kingside:
+            if position.rookSource[color][side] notin [noSquare, classicalRookSource[color][side]]:
+                return true
+    false
+
+func toMove*(s: string, position: Position): Move =
+
+    if s.len != 4 and s.len != 5:
+        raise newException(ValueError, "Move string is wrong length: " & s)
+
+    let
+        source = parseEnum[Square](s[0..1])
+        target = parseEnum[Square](s[2..3])
+        promoted = if s.len == 5: s[4].toColoredPiece.piece else: noPiece
+
+    for move in position.legalMoves:
+        
+        if move.source == source and move.promoted == promoted:
+            if move.target == target:
+                return move
+            if move.castled and target == kingTarget[position.us][position.castlingSide(move)] and not position.isChess960:
+                return move
+    raise newException(ValueError, "Move is illegal: " & s)
+
+proc toPosition*(fen: string, suppressWarnings = false): Position =
+    var fenWords = fen.splitWhitespace()    
+    if fenWords.len < 4:
+        raise newException(ValueError, "FEN must have at least 4 words")
+    if fenWords.len > 6 and not suppressWarnings:
+        echo "WARNING: FEN shouldn't have more than 6 words"
+    while fenWords.len < 6:
+        fenWords.add("0")
+
+    for i in 2..8:
+        fenWords[0] = fenWords[0].replace($i, repeat("1", i))
+
+    let piecePlacement = fenWords[0]
+    let activeColor = fenWords[1]
+    let castlingRights = fenWords[2]
+    let enPassant = fenWords[3]
+    let halfmoveClock = fenWords[4]
+    let fullmoveNumber = fenWords[5]
+
+    var squareList = block:
+        var squareList: seq[Square]
+        for y in 0..7:
+            for x in countdown(7, 0):
+                squareList.add Square(y*8 + x) 
+        squareList
+
+    for pieceChar in piecePlacement:
+        if squareList.len == 0:
+            raise newException(ValueError, "FEN is not correctly formatted (too many squares)")
+
+        case pieceChar
+        of '/':
+            # we don't need to do anything, except check if the / is at the right place
+            if not squareList[^1].isLeftEdge:
+                raise newException(ValueError, "FEN is not correctly formatted (misplaced '/')")
+        of '1':
+            discard squareList.pop
+        of '0':
+            if not suppressWarnings:
+                echo "WARNING: '0' in FEN piece placement data is not official notation"
+        else:
+            doAssert pieceChar notin ['2', '3', '4', '5', '6', '7', '8']
+            try:
+                let sq = squareList.pop
+                result.addColoredPiece(pieceChar.toColoredPiece, sq)
+            except ValueError:
+                raise newException(ValueError, "FEN piece placement is not correctly formatted: " &
+                        getCurrentExceptionMsg())
+            
+    if squareList.len != 0:
+        raise newException(ValueError, "FEN is not correctly formatted (too few squares)")
+    
+    # active color
+    case activeColor
+    of "w", "W":
+        result.us = white
+    of "b", "B":
+        result.us = black
+    else:
+        raise newException(ValueError, "FEN active color notation does not exist: " & activeColor)
+
+    # castling rights
+    result.rookSource = [[noSquare, noSquare], [noSquare, noSquare]]
+    for castlingChar in castlingRights:
+        if castlingChar == '-':
+            continue
+
+        let
+            us = if castlingChar.isUpperAscii: white else: black
+            kingSquare = (result[us] and result[king]).toSquare
+
+        let rookSource = case castlingChar:
+        of 'K', 'k':
+            var rookSource = kingSquare
+            while rookSource.goRight:
+                if (result[rook, us] and rookSource.toBitboard) != 0:
+                    break
+            rookSource
+        of 'Q', 'q':
+            var rookSource = kingSquare
+            while rookSource.goLeft:
+                if (result[rook, us] and rookSource.toBitboard) != 0:
+                    break
+            rookSource
+        else:
+            let rookSourceBit = files[parseEnum[Square](castlingChar.toLowerAscii & "1")] and homeRank[us]
+        
+            if rookSourceBit.countSetBits != 1:
+                raise newException(ValueError, "FEN castling ambiguous or erroneous: " & activeColor)
+            (files[parseEnum[Square](castlingChar.toLowerAscii & "1")] and homeRank[us]).toSquare
+
+        let castlingSide = if rookSource < kingSquare: queenside else: kingside
+        result.rookSource[us][castlingSide] = rookSource
+
+    # en passant square
+    result.enPassantTarget = 0
+    if enPassant != "-":
+        try:
+            result.enPassantTarget = parseEnum[Square](enPassant.toLowerAscii).toBitboard
+        except ValueError:
+            raise newException(ValueError, "FEN en passant target square is not correctly formatted: " &
+                    getCurrentExceptionMsg())
+
+    # halfmove clock and fullmove number
+    try:
+        result.halfmoveClock = parseUInt(halfmoveClock).int16
+    except ValueError:
+        raise newException(ValueError, "FEN halfmove clock is not correctly formatted: " & getCurrentExceptionMsg())
+
+    try:
+        result.halfmovesPlayed = parseUInt(fullmoveNumber).int16 * 2
+    except ValueError:
+        raise newException(ValueError, "FEN fullmove number is not correctly formatted: " & getCurrentExceptionMsg())
+
+    result.zobristKey = result.calculateZobristKey
 
 func notation*(move: Move, position: Position): string =
     if move.castled and not position.isChess960:
@@ -222,6 +262,3 @@ func insufficientMaterial*(position: Position): bool =
     (position[pawn] or position[rook] or position[queen]) == 0 and (position[bishop] or position[knight]).countSetBits <= 1
 
 const startpos* = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".toPosition
-
-proc standardizedFEN*(fen: string): string =
-    fen.toPosition.fen

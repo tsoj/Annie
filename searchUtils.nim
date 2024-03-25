@@ -90,7 +90,7 @@ func update*(gameHistory: var GameHistory, position: Position, height: Ply) =
 
 func checkForRepetition*(gameHistory: GameHistory, position: Position, height: Ply): bool =
 
-    var count: int16 = position.fiftyMoveRuleHalfmoveClock
+    var count: int16 = position.halfmoveClock
     for i in countdown(height-1.Ply, 0.Ply):
         if count <= 0:
             return false

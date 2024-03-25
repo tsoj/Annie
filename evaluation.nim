@@ -196,7 +196,7 @@ func attackedByPawn(
     us, enemy: Color,
     gradient: var GradientOrNothing
 ): array[Phase, Value] =
-    if (position[enemy] and position[pawn] and attackTablePawnCapture[us][square]) != 0:
+    if (position[enemy] and position[pawn] and attackMaskPawnCapture(square, us)) != 0:
         result.addValue(evalParameters, gradient, us, bonusPieceAttackedByPawn)
 
 
@@ -212,7 +212,7 @@ func evaluatePawn(
 ): array[Phase, Value] {.inline.} =
 
     # passed pawn
-    let isPassed = position.isPassedPawn(us, enemy, square)
+    let isPassed = position.isPassedPawn(us, square)
     if isPassed:
         result += evalParameters.getPstValue(
             square, noPiece, # noPiece stands for passed pawn
@@ -222,7 +222,7 @@ func evaluatePawn(
         )
 
     # can move forward
-    if (position.occupancy and attackTablePawnQuiet[us][square]) == 0:
+    if (position.occupancy and attackMaskPawnQuiet(square, us)) == 0:
         if isPassed:
             var index = square.int div 8
             if us == black:
@@ -415,7 +415,7 @@ func evaluatePieceType(
         result -= evaluatePiece(square, enemy, us)
 
 func evaluate*(position: Position, evalParameters: EvalParameters, gradient: var GradientOrNothing): Value {.inline.} =
-    if position.fiftyMoveRuleHalfmoveClock >= 100:
+    if position.halfmoveClock >= 100:
         return 0.Value
 
     var value = [opening: 0.Value, endgame: 0.Value]

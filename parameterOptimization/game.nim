@@ -26,7 +26,7 @@ func gameStatus*(positionHistory: openArray[Position]): GameStatus =
             return (if position.enemy == black: checkmateBlack else: checkmateWhite)
         else:
             return stalemate
-    if position.fiftyMoveRuleHalfmoveClock >= 100:
+    if position.halfmoveClock >= 100:
             return fiftyMoveRule
     var repetitions = 0
     for p in positionHistory:

@@ -29,6 +29,7 @@ type
         allNode,
         cutNode
     GamePhase* = 0..32
+    ZobristKey* = uint64
 
 template isLeftEdge*(square: Square): bool =
     square.int8 mod 8 == 0
@@ -49,24 +50,26 @@ template up*(square: Square): Square = (square.int8 + 8).Square
 template down*(square: Square): Square = (square.int8 - 8).Square
 template left*(square: Square): Square = (square.int8 - 1).Square
 template right*(square: Square): Square = (square.int8 + 1).Square
-
 template up*(square: Square, color: Color): Square =
-    if color == white: square.up else: square.down
+    if color == white:
+        square.up
+    else:
+        square.down
 
 func goUp*(square: var Square): bool =
-    if square.isUpperEdge: return false
+    if square.isUpperEdge or square == noSquare: return false
     square = square.up
     true
 func goDown*(square: var Square): bool =
-    if square.isLowerEdge: return false
+    if square.isLowerEdge or square == noSquare: return false
     square = square.down
     true
 func goLeft*(square: var Square): bool =
-    if square.isLeftEdge: return false
+    if square.isLeftEdge or square == noSquare: return false
     square = square.left
     true
 func goRight*(square: var Square): bool =
-    if square.isRightEdge: return false
+    if square.isRightEdge or square == noSquare: return false
     square = square.right
     true
 func goNothing*(square: var Square): bool =
@@ -75,16 +78,28 @@ func goNothing*(square: var Square): bool =
 func goUpColor*(square: var Square, color: Color): bool =
     if color == white: square.goUp else: square.goDown
 
+func mirrorVertically*(square: Square): Square =
+    (square.int8 xor 56).Square
+
+func mirrorHorizontally*(square: Square): Square =
+    (square.int8 xor 7).Square
+
 func opposite*(color: Color): Color =
     (color.uint8 xor 1).Color
 
-func `-`*(a: Ply, b: Ply): Ply =
-    max(a.int16 - b.int16, Ply.low.int16).Ply
-func `+`*(a: Ply, b: Ply): Ply =
-    min(a.int16 + b.int16, Ply.high.int16).Ply
-func `-=`*(a: var Ply, b: Ply) =
+func `-`*(a: Ply, b: SomeNumber or Ply): Ply =
+    max(a.BiggestInt - b.BiggestInt, Ply.low.BiggestInt).Ply
+func `-`*(a: SomeNumber, b: Ply): Ply =
+    max(a.BiggestInt - b.BiggestInt, Ply.low.BiggestInt).Ply
+
+func `+`*(a: Ply, b: SomeNumber or Ply): Ply =
+    min(a.BiggestInt + b.BiggestInt, Ply.high.BiggestInt).Ply
+func `+`*(a: SomeNumber, b: Ply): Ply =
+    min(a.BiggestInt + b.BiggestInt, Ply.high.BiggestInt).Ply
+
+func `-=`*(a: var Ply, b: Ply or SomeNumber) =
     a = a - b
-func `+=`*(a: var Ply, b: Ply) =
+func `+=`*(a: var Ply, b: Ply or SomeNumber) =
     a = a + b
 
 const valueInfinity* = min(-(int16.low.Value), int16.high.Value)
@@ -111,4 +126,4 @@ const
     upperBound* = allNode
     lowerBound* = cutNode
 
-const maxNumMoves* = 256
+const maxNumMoves* = 384

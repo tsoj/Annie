@@ -64,7 +64,7 @@ let startTime = now()
 
 proc abortGame(bgs: var BotGameState) =
     let query = fmt"https://lichess.org/api/bot/game/{gameId}/abort"
-    discard bgs.requestsSession.jsonResponse(httpPost, query, token)
+    discard bgs.requestsSession.jsonResponse(HttpPost, query, token)
     logInfo "Aborted game"
 
 proc main() =
@@ -79,7 +79,7 @@ proc main() =
         bgs.sendMessage "Sorry, I had some stupid technical difficulties."
     
     let (botUserId, botUserName) = block:
-        let b = bgs.requestsSession.jsonResponse(httpGet, "https://lichess.org/api/account", token)
+        let b = bgs.requestsSession.jsonResponse(HttpGet, "https://lichess.org/api/account", token)
         if b{"id"}.getStr == "":
             logError b.pretty
             quit QuitFailure
@@ -97,7 +97,7 @@ proc main() =
             lichessGame = none LichessGame
             difficultyLevelOpt = none DifficultyLevel
 
-        for gameFullNode in streamEvents(fmt"https://lichess.org/api/bot/game/stream/{gameId}", token):
+        for gameFullNode in streamEvents("lichess.org", fmt"/api/bot/game/stream/{gameId}", token):
 
             if gameFullNode.isNone:
                 continue
@@ -132,9 +132,9 @@ proc main() =
         weDeclinedDrawAlready = false
         consideredRageQuitting = false
         canChangeDifficulty = true
-    hashTable.setSize(sizeInBytes = hashSizeMegaByte * megaByteToByte)
+    hashTable.setByteSize(sizeInBytes = hashSizeMegaByte * megaByteToByte)
 
-    for jsonNode in streamEvents(fmt"https://lichess.org/api/bot/game/stream/{gameId}", token):    
+    for jsonNode in streamEvents("lichess.org", fmt"/api/bot/game/stream/{gameId}", token):    
         if parentPID != getppid(): # parent process stopped
             logError "Parent process (", parentPID, ") doesn't exist anymore"
             quit QuitFailure
@@ -367,7 +367,7 @@ proc main() =
             let query = fmt"https://lichess.org/api/bot/game/{gameId}/move/{move}?offeringDraw={offerDraw}"
 
             try:
-                discard bgs.requestsSession.jsonResponse(httpPost, query, token)
+                discard bgs.requestsSession.jsonResponse(HttpPost, query, token)
             except CatchableError:
                 if "Not your turn, or game already over" in getCurrentExceptionMsg():
                     logInfo "Tried to play move when it's not our turn, or game already over"

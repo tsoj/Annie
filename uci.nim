@@ -40,7 +40,7 @@ type UciState = object
     searchRunningFlag: Atomic[bool]
     numThreads: int
     multiPv: int
-    difficultyLevel: DifficultyLevel
+    difficultyLevel: DifficultyLevel = defaultDifficultyLevel
 
 proc uci() =
     echo "id name Annie " & version()
@@ -73,7 +73,7 @@ proc setOption(uciState: var UciState, params: seq[string]) =
             if newHashSizeMB < 1 or newHashSizeMB > maxHashSizeMB:
                 echo "Invalid value"
             else:
-                uciState.hashTable.setSize(sizeInBytes = newHashSizeMB * megaByteToByte)
+                uciState.hashTable.setByteSize(sizeInBytes = newHashSizeMB * megaByteToByte)
         of "UCI_Chess960".toLowerAscii:
             discard
         of "Threads".toLowerAscii:
@@ -288,7 +288,7 @@ proc uciLoop*() =
         multiPv: 1
     )
     uciState.searchRunningFlag.store(false)
-    uciState.hashTable.setSize(sizeInBytes = defaultHashSizeMB * megaByteToByte)
+    uciState.hashTable.setByteSize(sizeInBytes = defaultHashSizeMB * megaByteToByte)
     
     var searchThreadResult = FlowVar[bool]()
     while true:
