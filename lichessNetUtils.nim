@@ -15,7 +15,9 @@ import log
 
 export HttpClient, HttpMethod
 
-const maxNumRetries = 5
+const
+    maxNumRetries = 5
+    maxNumEmptyReplies = 100
 
 proc getRequestsSession*(): HttpClient =
     newHttpClient()
@@ -23,6 +25,8 @@ proc getRequestsSession*(): HttpClient =
 iterator streamEvents*(host: string, path: string, token: string): Option[JsonNode] =
 
     for i in 1..maxNumRetries:
+
+        var numEmptyReplies = 0
 
         try:
             let s = newSocket()
@@ -35,7 +39,19 @@ iterator streamEvents*(host: string, path: string, token: string): Option[JsonNo
             s.send(req)
             while true:
                 let line = s.recvLine(timeout = 15_000)
-                logDebug line
+                
+
+                if line.strip.len == 0:
+                    numEmptyReplies += 1
+                    logDebug "Received empty line"
+                    if numEmptyReplies > maxNumEmptyReplies:
+                        logInfo "Retrying after getting too many empty replies: ", numEmptyReplies
+                        break
+                else:
+                    numEmptyReplies = 0
+
+                logDebug "Received line: ", line
+
                 if line.strip.len > 0 and line.strip[0] == '{':
                     let json = line.parseJson
                     yield some json
