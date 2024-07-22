@@ -160,7 +160,7 @@ proc main() =
                     (jsonNode{"text"}.getStr == "Black offers draw" and lichessGame.botColor == white):
                         if (not weDeclinedDrawAlready) or rand(1.0) < 0.2:
                             sleep 300
-                            discard bgs.sendComment enemyOffersDraw
+                            discard bgs.sendComment(enemyOffersDraw, toSpectator = true)
                             weDeclinedDrawAlready = true
 
                 if jsonNode{"room"}.getStr == "player" and jsonNode{"username"}.getStr != botUserName:
@@ -273,29 +273,29 @@ proc main() =
                 if outcome == 1.0:
                     case gameStateStatus:
                     of "resign":
-                        doAssert bgs.sendComment(enemyResigns)
+                        doAssert bgs.sendComment(enemyResigns, toSpectator = true)
                     of "mate":
-                        doAssert bgs.sendComment(enemyGetsMated)
+                        doAssert bgs.sendComment(enemyGetsMated, toSpectator = true)
                     of "outoftime":
-                        doAssert bgs.sendComment(enemyRunsOutOfTime)
+                        doAssert bgs.sendComment(enemyRunsOutOfTime, toSpectator = true)
                     else:
                         logError "Unsupported game state status: ", gameStateStatus
                 elif outcome == 0.0:
                     case gameStateStatus:
                     of "resign":
-                        doAssert bgs.sendComment(weResign)
+                        doAssert bgs.sendComment(weResign, toSpectator = true)
                     of "mate":
-                        doAssert bgs.sendComment(weGetMated)
+                        doAssert bgs.sendComment(weGetMated, toSpectator = true)
                     of "outoftime":
-                        doAssert bgs.sendComment(weRunOutOfTime)
+                        doAssert bgs.sendComment(weRunOutOfTime, toSpectator = true)
                     else:
                         logError "Unsupported game state status: ", gameStateStatus
                 elif outcome == 0.5:
                     case gameStateStatus:
                     of "stalemate":
-                        doAssert bgs.sendComment(stalemate)
+                        doAssert bgs.sendComment(stalemate, toSpectator = true)
                     of "draw":
-                        doAssert bgs.sendComment(draw)
+                        doAssert bgs.sendComment(draw, toSpectator = true)
                     else:
                         logError "Unsupported game state status: ", gameStateStatus
                 else:
@@ -352,7 +352,7 @@ proc main() =
             # rage quit
             if value < -600.cp and gameState.timeLeft(gameState.lichessGame.botColor) <= initDuration(seconds = 80):
                 if rand(1.0) < 0.1 and not consideredRageQuitting:
-                    if bgs.sendComment(rageQuit):
+                    if bgs.sendComment(rageQuit, toSpectator = true):
                         logWarn "Rage quitting"
                         quit QuitSuccess
                 consideredRageQuitting = true

@@ -124,7 +124,8 @@ proc trySendSomeComments(
     gameState: LichessGameState,
     cci: CommentConditionInfo,
     sleepTime: Duration,
-    commentTypes, commentTypesImportant, commentTypesMust: openArray[CommentType]
+    commentTypes, commentTypesImportant, commentTypesMust: openArray[CommentType],
+    toSpectator = false
 ) =
     var
         commentTypes = commentTypes.toSeq
@@ -158,7 +159,7 @@ proc trySendSomeComments(
                     else:
                         sleep min(sleepTime.inMilliseconds.int, 100)
                 madeComment = true
-                bgsAddr[].sendMessage comment.get
+                bgsAddr[].sendMessage comment.get, toSpectator = toSpectator
                 bgsAddr[].registerSentComment commentType, gameState, comment.get
                 logInfo &"Sent comment \"{comment.get}\" (type: {commentType})"
     
@@ -213,7 +214,8 @@ proc beforeBotMove*(bgs: var BotGameState, gameState: LichessGameState) =
             enemyCapturedEnPassant,
             enemyDoesFirstKingCloudMove,
             enemyDoesSecondKingCloudMove
-        ]
+        ],
+        toSpectator = true
     )
 
 proc afterBotMove*(bgs: var BotGameState, gameState: LichessGameState, pv: seq[Move], value: Value) = 
@@ -269,15 +271,16 @@ proc afterBotMove*(bgs: var BotGameState, gameState: LichessGameState, pv: seq[M
         ],
         commentTypesMust = @[
             weCaptureEnPassant
-        ]
+        ],
+        toSpectator = true
     )
 
 
-proc sendComment*(bgs: var BotGameState, commentType: CommentType): bool =
+proc sendComment*(bgs: var BotGameState, commentType: CommentType, toSpectator = false): bool =
     
     let comment = commentType.sampleComment(excluded = bgs.commentHistory)
     if comment.isSome:
-        bgs.sendMessage comment.get
+        bgs.sendMessage comment.get, toSpectator = toSpectator
         logInfo &"Sent comment \"{comment.get}\" (type: {commentType})"
         return true
     else:
